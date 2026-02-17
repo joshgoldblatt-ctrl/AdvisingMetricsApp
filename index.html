@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 6.1</title>
+    <title>LaGuardia Advising Metrics App - Version 6.2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <style>
@@ -736,7 +736,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 6.1 - Released February 17, 2026</div>
+            <div class="subtitle">Version 6.2 - Released February 17, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -3802,6 +3802,21 @@
         var uniqueStudents = new Set();
         var grandTotalAssignedAdvisor = 0;
         var grandTotalOfficeAppt = 0;
+        var grandTotalUniqueOnly = 0;
+        var grandTotalSharedOnly = 0;
+        var grandTotalUniqueAssigned = 0;
+        var grandTotalSharedAssigned = 0;
+        var grandTotalUniqueOfficeAppt = 0;
+        var grandTotalSharedOfficeAppt = 0;
+
+        // Pre-pass: determine how many offices each student is assigned to (all offices, not just tracked)
+        var studentOfficeCount = {}; // sid -> total number of offices assigned
+        for (var pi = 0; pi < filteredData.length; pi++) {
+            var pRow = filteredData[pi];
+            var pSid = pRow[caseloadCols.studentId];
+            var pOffices = parseOffices(pRow[caseloadCols.office]);
+            studentOfficeCount[pSid] = pOffices.length;
+        }
 
         for (var i = 0; i < filteredData.length; i++) {
             var s = filteredData[i];
@@ -3809,8 +3824,7 @@
 
             var assignedStaffIds = parseIds(s[caseloadCols.staffId]);
             var offices = parseOffices(s[caseloadCols.office]);
-
-            // Use advising-specific staff for advisor metrics
+            var isSharedStudent = (studentOfficeCount[sid] || 0) > 1;
             var metAdvisingStaff = advisingStaffByStudent.get(sid);
             var metOffices = officesByStudent.get(sid);
 
@@ -3834,10 +3848,15 @@
             if (!uniqueStudents.has(sid)) {
                 uniqueStudents.add(sid);
                 
+                if (isSharedStudent) grandTotalSharedOnly++;
+                else grandTotalUniqueOnly++;
+
                 // Met with ANY assigned advisor (across all offices)?
                 var metAnyAssignedAdvisor = metIncludesAny(metAdvisingStaff, assignedStaffIds);
                 if (metAnyAssignedAdvisor) {
                     grandTotalAssignedAdvisor++;
+                    if (isSharedStudent) grandTotalSharedAssigned++;
+                    else grandTotalUniqueAssigned++;
                 }
                 
                 // Met with ANY assigned office?
@@ -3852,6 +3871,8 @@
                 }
                 if (metAnyAssignedOffice) {
                     grandTotalOfficeAppt++;
+                    if (isSharedStudent) grandTotalSharedOfficeAppt++;
+                    else grandTotalUniqueOfficeAppt++;
                 }
             }
 
@@ -3867,10 +3888,21 @@
                     officeStats[thisOffice] = { 
                         totalStudents: 0, 
                         assignedAdvisorCount: 0, 
-                        officeAppointments: 0 
+                        officeAppointments: 0,
+                        uniqueStudents: 0,
+                        sharedStudents: 0,
+                        uniqueAssignedAdvisor: 0,
+                        sharedAssignedAdvisor: 0,
+                        uniqueOfficeAppt: 0,
+                        sharedOfficeAppt: 0
                     };
                 }
                 officeStats[thisOffice].totalStudents++;
+                if (isSharedStudent) {
+                    officeStats[thisOffice].sharedStudents++;
+                } else {
+                    officeStats[thisOffice].uniqueStudents++;
+                }
 
                 // Check if student met an assigned advisor FOR THIS SPECIFIC OFFICE
                 var advisorsAtThisOffice = officeToAdvisors.get(thisOffice);
@@ -3903,11 +3935,15 @@
                 
                 if (metAssignedForThisOffice) {
                     officeStats[thisOffice].assignedAdvisorCount++;
+                    if (isSharedStudent) officeStats[thisOffice].sharedAssignedAdvisor++;
+                    else officeStats[thisOffice].uniqueAssignedAdvisor++;
                 }
 
                 // Check if student had any appointment at THIS SPECIFIC OFFICE
                 if (metOffices && metOffices.has(thisOffice)) {
                     officeStats[thisOffice].officeAppointments++;
+                    if (isSharedStudent) officeStats[thisOffice].sharedOfficeAppt++;
+                    else officeStats[thisOffice].uniqueOfficeAppt++;
                 }
             }
 
@@ -4010,7 +4046,7 @@
         html += '<h4 style="margin: 10px 0 8px;">Analysis by Advising Office</h4>';
         html += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>Note: Office rows include all students assigned to that office, including students who may also be assigned to other offices. As a result, office row totals may sum to more than the grand total, which counts each student only once.</em></p>';
         html += '<table class="data-table"><thead><tr>';
-        html += '<th>Advising Office</th><th>Total Students</th>';
+        html += '<th>Advising Office</th><th>Total Students</th><th>Unique</th><th>Shared</th>';
         html += '<th>Assigned Advisor Appts</th><th>Rate</th>';
         html += '<th>Office Appt</th><th>Rate</th>';
         html += '</tr></thead><tbody>';
@@ -4030,6 +4066,8 @@
             html += '<tr>';
             html += '<td>' + off + '</td>';
             html += '<td>' + st.totalStudents + (prevSt ? '<br><span style="font-size:11px;color:#888;">' + prevLabel + ': ' + prevSt.totalStudents + '</span>' : '') + '</td>';
+            html += '<td>' + st.uniqueStudents + '</td>';
+            html += '<td>' + st.sharedStudents + '</td>';
             html += '<td>' + st.assignedAdvisorCount + '</td>';
             html += '<td>' + assignedRate + '%' + (prevAssignedRate !== null ? comparisonBadge(parseFloat(assignedRate), parseFloat(prevAssignedRate)) + '<br><span style="font-size:11px;color:#888;">' + prevLabel + ': ' + prevAssignedRate + '%</span>' : '') + '</td>';
             html += '<td>' + st.officeAppointments + '</td>';
@@ -4049,10 +4087,47 @@
         html += '<tr class="grand-total-row">';
         html += '<td><strong>GRAND TOTAL (Unduplicated)</strong></td>';
         html += '<td><strong>' + gS + '</strong>' + (prevGS !== null ? '<br><span style="font-size:11px;opacity:0.8;">' + prevLabel + ': ' + prevGS + '</span>' : '') + '</td>';
+        html += '<td><strong>' + grandTotalUniqueOnly + '</strong></td>';
+        html += '<td><strong>' + grandTotalSharedOnly + '</strong></td>';
         html += '<td><strong>' + grandTotalAssignedAdvisor + '</strong></td>';
         html += '<td><strong>' + gAssignedRate + '%</strong>' + (prevGAssignedRate !== null ? comparisonBadge(parseFloat(gAssignedRate), parseFloat(prevGAssignedRate)) + '<br><span style="font-size:11px;opacity:0.8;">' + prevLabel + ': ' + prevGAssignedRate + '%</span>' : '') + '</td>';
         html += '<td><strong>' + grandTotalOfficeAppt + '</strong></td>';
         html += '<td><strong>' + gOfficeRate + '%</strong>' + (prevGOfficeRate !== null ? comparisonBadge(parseFloat(gOfficeRate), parseFloat(prevGOfficeRate)) + '<br><span style="font-size:11px;opacity:0.8;">' + prevLabel + ': ' + prevGOfficeRate + '%</span>' : '') + '</td>';
+        html += '</tr>';
+        html += '</tbody></table>';
+
+        // --- Unique vs Shared Student Breakdown Table ---
+        html += '<h4 style="margin: 24px 0 8px;">Assigned Advisor Rate: Unique vs. Shared Students</h4>';
+        html += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>"Unique" students are assigned to only one advising office. "Shared" students are assigned to two or more offices.</em></p>';
+        html += '<table class="data-table"><thead><tr>';
+        html += '<th>Advising Office</th>';
+        html += '<th>Unique Students</th><th>Unique Assigned Rate</th>';
+        html += '<th>Shared Students</th><th>Shared Assigned Rate</th>';
+        html += '</tr></thead><tbody>';
+
+        for (var usk = 0; usk < officeKeys.length; usk++) {
+            var usOff = officeKeys[usk];
+            var usSt = officeStats[usOff];
+            var usUniqueRate = usSt.uniqueStudents ? ((usSt.uniqueAssignedAdvisor / usSt.uniqueStudents) * 100).toFixed(1) : '0.0';
+            var usSharedRate = usSt.sharedStudents ? ((usSt.sharedAssignedAdvisor / usSt.sharedStudents) * 100).toFixed(1) : '0.0';
+            html += '<tr>';
+            html += '<td>' + usOff + '</td>';
+            html += '<td>' + usSt.uniqueStudents + '</td>';
+            html += '<td>' + usUniqueRate + '%</td>';
+            html += '<td>' + usSt.sharedStudents + '</td>';
+            html += '<td>' + usSharedRate + '%</td>';
+            html += '</tr>';
+        }
+
+        // Grand total row
+        var gtUniqueRate = grandTotalUniqueOnly ? ((grandTotalUniqueAssigned / grandTotalUniqueOnly) * 100).toFixed(1) : '0.0';
+        var gtSharedRate = grandTotalSharedOnly ? ((grandTotalSharedAssigned / grandTotalSharedOnly) * 100).toFixed(1) : '0.0';
+        html += '<tr class="grand-total-row">';
+        html += '<td><strong>GRAND TOTAL (Unduplicated)</strong></td>';
+        html += '<td><strong>' + grandTotalUniqueOnly + '</strong></td>';
+        html += '<td><strong>' + gtUniqueRate + '%</strong></td>';
+        html += '<td><strong>' + grandTotalSharedOnly + '</strong></td>';
+        html += '<td><strong>' + gtSharedRate + '%</strong></td>';
         html += '</tr>';
         html += '</tbody></table>';
 
