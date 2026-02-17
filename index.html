@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 6.0 - Released</title>
+    <title>LaGuardia Advising Metrics App - Version 6.1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <style>
@@ -736,7 +736,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 6.0 - Released February 9, 2026</div>
+            <div class="subtitle">Version 6.1 - Released February 17, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -975,6 +975,16 @@
     var multiselectInstances = {};
     var advisingServices = new Set(); // Track which services count as advising
     var servicesByLocation = new Map(); // Map of location -> Set of services
+
+    // Office name aliases: maps old/alternate names to canonical names
+    var officeNameAliases = {
+        'CUNY 2X Tech Academy': 'CUNY 2X Tech Computer Science'
+    };
+    function normalizeOfficeName(name) {
+        if (!name) return name;
+        var trimmed = String(name).trim();
+        return officeNameAliases[trimmed] || trimmed;
+    }
 
     // Previous semester data
     var prevCaseloadData = null;
@@ -1843,6 +1853,16 @@
         var caseloadCols = getColumnMappings(caseloadData[0]);
 
         var offices = getUniqueValues(caseloadData, caseloadCols.office);
+        // Normalize office names (handle renames/aliases)
+        var normalizedOfficeSet = new Set();
+        for (var noi = 0; noi < offices.length; noi++) {
+            var parts = String(offices[noi]).split(';');
+            for (var noj = 0; noj < parts.length; noj++) {
+                var norm = normalizeOfficeName(parts[noj].trim());
+                if (norm) normalizedOfficeSet.add(norm);
+            }
+        }
+        offices = Array.from(normalizedOfficeSet).sort();
         updateMultiselectOptionsData(multiselectInstances['advising-office-filter'], offices);
 
         var advisors = getUniqueValues(caseloadData, caseloadCols.advisor);
@@ -2097,7 +2117,7 @@
             var advisorStr = r[caseloadCols.advisor];
 
             // Parse semicolon-separated values
-            var offices = parseSemicolonList(officeStr);
+            var offices = parseSemicolonList(officeStr).map(normalizeOfficeName);
             var staffIds = parseSemicolonList(staffIdStr);
             var advisors = parseSemicolonList(advisorStr);
 
@@ -2155,7 +2175,12 @@
             
             // Map "Math, Engineering & Computer Science" to both engineering programs
             if (loc === 'Math, Engineering & Computer Science') {
-                return ['Careers in Engineering', 'CUNY 2X Tech Academy'];
+                return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            }
+
+            // Map old office name to new
+            if (loc === 'CUNY 2X Tech Academy') {
+                return ['CUNY 2X Tech Computer Science'];
             }
             
             // Default: return the location as-is
@@ -2714,7 +2739,7 @@
             var sid = row[caseloadCols.studentId];
             if (sid === null || sid === undefined || sid === '') continue;
     
-            var offices = parseList(row[caseloadCols.office]);
+            var offices = parseList(row[caseloadCols.office]).map(normalizeOfficeName);
             var advisors = parseList(row[caseloadCols.advisor]);
             var staffIds = parseList(row[caseloadCols.staffId]);
     
@@ -2724,7 +2749,7 @@
             if (maxLen === 0 && row[caseloadCols.advisor]) {
                 var singleStaffId = normalizeId(row[caseloadCols.staffId]);
                 var singleAdvisor = String(row[caseloadCols.advisor]).trim();
-                var singleOffice = row[caseloadCols.office] ? String(row[caseloadCols.office]).trim() : '';
+                var singleOffice = row[caseloadCols.office] ? normalizeOfficeName(String(row[caseloadCols.office]).trim()) : '';
     
                 if (singleStaffId) {
                     if (!staffIdToInfo.has(singleStaffId)) {
@@ -3016,7 +3041,7 @@
 
         var trackedOffices = new Set([
             'ASAP', 'Careers in Engineering', 'College Discovery',
-            'CUNY 2X Tech Academy', 'International Student Services',
+            'CUNY 2X Tech Computer Science', 'International Student Services',
             'Student Advising Services', 'Veteran Services'
         ]);
 
@@ -3027,7 +3052,7 @@
 
         function parseOffices(val) {
             if (val === null || val === undefined) return [];
-            return String(val).split(';').map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+            return String(val).split(';').map(function(s){return normalizeOfficeName(s.trim());}).filter(function(s){return s.length>0;});
         }
         function parseIds(val) {
             if (val === null || val === undefined) return [];
@@ -3112,7 +3137,7 @@
 
         var trackedOffices = new Set([
             'ASAP', 'Careers in Engineering', 'College Discovery',
-            'CUNY 2X Tech Academy', 'International Student Services',
+            'CUNY 2X Tech Computer Science', 'International Student Services',
             'Student Advising Services', 'Veteran Services'
         ]);
 
@@ -3137,7 +3162,7 @@
             var row = dataToUse[i];
             var sid = row[caseloadCols.studentId];
             if (sid === null || sid === undefined || sid === '') continue;
-            var offices = parseSemicolonList(row[caseloadCols.office]);
+            var offices = parseSemicolonList(row[caseloadCols.office]).map(normalizeOfficeName);
             var staffIds = parseSemicolonList(row[caseloadCols.staffId]);
 
             // Count appointments with assigned advisor(s) for this student
@@ -3271,7 +3296,7 @@
 
         var trackedOffices = new Set([
             'ASAP', 'Careers in Engineering', 'College Discovery',
-            'CUNY 2X Tech Academy', 'International Student Services',
+            'CUNY 2X Tech Computer Science', 'International Student Services',
             'Student Advising Services', 'Veteran Services'
         ]);
 
@@ -3285,7 +3310,8 @@
             if (!location) return [];
             var loc = String(location).trim();
             if (loc === 'Veterans Services') return ['Veteran Services'];
-            if (loc === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Academy'];
+            if (loc === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [loc];
         }
 
@@ -3340,7 +3366,7 @@
         for (var i = 0; i < dataToUse.length; i++) {
             var s = dataToUse[i];
             var sid2 = s[caseloadCols.studentId];
-            var offices = parseSemicolonList(s[caseloadCols.office]);
+            var offices = parseSemicolonList(s[caseloadCols.office]).map(normalizeOfficeName);
 
             for (var oi = 0; oi < offices.length; oi++) {
                 var thisOffice = offices[oi];
@@ -3506,7 +3532,8 @@
                 if (!location) return [];
                 var loc = String(location).trim();
                 if (loc === 'Veterans Services') return ['Veteran Services'];
-                if (loc === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Academy'];
+                if (loc === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+                if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
                 return [loc];
             }
             var ftServCols = ['Reported Services', 'Reported_Services'];
@@ -3521,7 +3548,7 @@
                 var fcSid = fcRow[ftCaseloadCols.studentId];
                 if (fcSid === null || fcSid === undefined || fcSid === '') continue;
                 ftUniqueStudents.add(fcSid);
-                var fcOffices = ftParseSemicolon(fcRow[ftCaseloadCols.office]);
+                var fcOffices = ftParseSemicolon(fcRow[ftCaseloadCols.office]).map(normalizeOfficeName);
                 if (!ftStudentOffices[fcSid]) ftStudentOffices[fcSid] = new Set();
                 for (var fcoi = 0; fcoi < fcOffices.length; fcoi++) ftStudentOffices[fcSid].add(fcOffices[fcoi]);
                 ftStudentApptCount[fcSid] = 0;
@@ -3584,7 +3611,7 @@
                         var pfcSid = pfcRow[prevFtCC.studentId];
                         if (pfcSid === null || pfcSid === undefined || pfcSid === '') continue;
                         prevFtUniqueStudents.add(pfcSid);
-                        var pfcOffices = ftParseSemicolon(pfcRow[prevFtCC.office]);
+                        var pfcOffices = ftParseSemicolon(pfcRow[prevFtCC.office]).map(normalizeOfficeName);
                         if (!prevFtStudentOffices[pfcSid]) prevFtStudentOffices[pfcSid] = new Set();
                         for (var pfcoi = 0; pfcoi < pfcOffices.length; pfcoi++) prevFtStudentOffices[pfcSid].add(pfcOffices[pfcoi]);
                         prevFtStudentApptCount[pfcSid] = 0;
@@ -3734,7 +3761,7 @@
             if (val === null || val === undefined) return [];
             return String(val)
                 .split(';')
-                .map(function (s) { return s.trim(); })
+                .map(function (s) { return normalizeOfficeName(s.trim()); })
                 .filter(function (s) { return s.length > 0; });
         }
 
@@ -3761,7 +3788,7 @@
             'ASAP',
             'Careers in Engineering',
             'College Discovery',
-            'CUNY 2X Tech Academy',
+            'CUNY 2X Tech Computer Science',
             'International Student Services',
             'Student Advising Services',
             'Veteran Services'
@@ -3946,6 +3973,20 @@
             }
         }
 
+        // --- Detect unrecognized offices ---
+        var allCaseloadOffices = new Set();
+        for (var uoi = 0; uoi < filteredData.length; uoi++) {
+            var uoOffices = parseOffices(filteredData[uoi][caseloadCols.office]);
+            for (var uoj = 0; uoj < uoOffices.length; uoj++) {
+                if (uoOffices[uoj]) allCaseloadOffices.add(uoOffices[uoj]);
+            }
+        }
+        var unrecognizedOffices = [];
+        allCaseloadOffices.forEach(function(o) {
+            if (!trackedOffices.has(o)) unrecognizedOffices.push(o);
+        });
+        unrecognizedOffices.sort();
+
         // --- Compute previous semester stats for comparison ---
         var prevOfficeResult = null;
         if (hasPrevSemester()) {
@@ -3956,6 +3997,16 @@
 
         // --- Build HTML ---
         var html = '';
+
+        // Unrecognized offices warning
+        if (unrecognizedOffices.length > 0) {
+            html += '<div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">';
+            html += '<strong>⚠️ Unrecognized Advising Office' + (unrecognizedOffices.length > 1 ? 's' : '') + ' Detected:</strong> ';
+            html += unrecognizedOffices.join(', ');
+            html += '<br><span style="color: #856404;">These offices appear in the caseload data but are not in the tracked offices list. Students in these offices are excluded from the office table below. Update the app configuration if these should be tracked.</span>';
+            html += '</div>';
+        }
+
         html += '<h4 style="margin: 10px 0 8px;">Analysis by Advising Office</h4>';
         html += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>Note: Office rows include all students assigned to that office, including students who may also be assigned to other offices. As a result, office row totals may sum to more than the grand total, which counts each student only once.</em></p>';
         html += '<table class="data-table"><thead><tr>';
@@ -4392,7 +4443,7 @@
         if (officeFilter.length > 0) {
             var officeToLocationMap = {
                 'Careers in Engineering': ['Math, Engineering & Computer Science', 'Careers in Engineering'],
-                'CUNY 2X Tech Academy': ['Math, Engineering & Computer Science', 'CUNY 2X Tech Academy'],
+                'CUNY 2X Tech Computer Science': ['Math, Engineering & Computer Science', 'CUNY 2X Tech Computer Science'],
                 'Veteran Services': ['Veterans Services', 'Veteran Services']
             };
             
@@ -5269,11 +5320,11 @@ function exportStudentData() {
 
             // Appointments within assigned office
             if (advisingAppts && office) {
-                var officeListExport = String(office).split(';').map(function(o){return o.trim();}).filter(function(o){return o.length>0;});
+                var officeListExport = String(office).split(';').map(function(o){return normalizeOfficeName(o.trim());}).filter(function(o){return o.length>0;});
                 // Build set of normalized office names including mappings
                 var assignedOfficeNames = new Set(officeListExport);
                 // Add location-name variants
-                var locationToOffice = { 'Veterans Services': 'Veteran Services', 'Math, Engineering & Computer Science': ['Careers in Engineering', 'CUNY 2X Tech Academy'] };
+                var locationToOffice = { 'Veterans Services': 'Veteran Services', 'Math, Engineering & Computer Science': ['Careers in Engineering', 'CUNY 2X Tech Computer Science'] };
                 for (var ai2 = 0; ai2 < advisingAppts.length; ai2++) {
                     var apptLoc = advisingAppts[ai2][idx.apptCols.office];
                     if (!apptLoc) continue;
@@ -5283,8 +5334,9 @@ function exportStudentData() {
                     // Check normalized mappings
                     if (locStr === 'Veterans Services' && assignedOfficeNames.has('Veteran Services')) { apptCountWithinOffice++; continue; }
                     if (locStr === 'Math, Engineering & Computer Science') {
-                        if (assignedOfficeNames.has('Careers in Engineering') || assignedOfficeNames.has('CUNY 2X Tech Academy')) { apptCountWithinOffice++; continue; }
+                        if (assignedOfficeNames.has('Careers in Engineering') || assignedOfficeNames.has('CUNY 2X Tech Computer Science')) { apptCountWithinOffice++; continue; }
                     }
+                    if (locStr === 'CUNY 2X Tech Academy' && assignedOfficeNames.has('CUNY 2X Tech Computer Science')) { apptCountWithinOffice++; continue; }
                 }
             }
 
@@ -5351,7 +5403,3 @@ function exportStudentData() {
 
 </body>
 </html>
-
-
-
-
