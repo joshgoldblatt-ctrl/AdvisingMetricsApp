@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 6.4</title>
+    <title>LaGuardia Advising Metrics App - Version 6.5</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -896,7 +896,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 6.4 - Released February 17, 2026</div>
+            <div class="subtitle">Version 6.5 - Released February 18, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -2525,13 +2525,14 @@
             var sid = s[caseloadCols.studentId];
             var advisingOffice = s[caseloadCols.office];
 
-            // Count students with multiple offices
+            // Count students with multiple offices (deduplicate same office)
             if (advisingOffice) {
                 var officeListForCount = String(advisingOffice)
                     .split(';')
                     .map(function(o){ return o.trim(); })
                     .filter(function(o){ return o.length > 0; });
-                if (officeListForCount.length > 1) {
+                var uniqueOfficeSet = new Set(officeListForCount);
+                if (uniqueOfficeSet.size > 1) {
                     multiOfficeCount++;
                 }
             }
@@ -3501,9 +3502,12 @@
                 }
             }
 
+            var seenOfficesForStudent = new Set();
             for (var oi2 = 0; oi2 < offices.length; oi2++) {
                 var thisOffice = offices[oi2];
                 if (!trackedOffices.has(thisOffice)) continue;
+                if (seenOfficesForStudent.has(thisOffice)) continue;
+                seenOfficesForStudent.add(thisOffice);
                 if (!officeStats[thisOffice]) officeStats[thisOffice] = { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 };
                 officeStats[thisOffice].totalStudents++;
 
@@ -3599,10 +3603,13 @@
                 studentAdvisorApptCount[sid] = advisorApptCount;
             }
 
-            // Assign to each office this student belongs to
+            // Assign to each office this student belongs to (deduplicate same office)
+            var seenOfficesForFreq = new Set();
             for (var oi = 0; oi < offices.length; oi++) {
                 var thisOffice = offices[oi];
                 if (!trackedOffices.has(thisOffice)) continue;
+                if (seenOfficesForFreq.has(thisOffice)) continue;
+                seenOfficesForFreq.add(thisOffice);
                 if (!officeFreq[thisOffice]) officeFreq[thisOffice] = { office: thisOffice, '0': 0, '1': 0, '2': 0, '3': 0, '4+': 0, total: 0 };
                 officeFreq[thisOffice].total++;
                 if (advisorApptCount === 0) officeFreq[thisOffice]['0']++;
@@ -3776,9 +3783,12 @@
             var sid2 = s[caseloadCols.studentId];
             var offices = parseSemicolonList(s[caseloadCols.office]).map(normalizeOfficeName);
 
+            var seenOfficesForOFreq = new Set();
             for (var oi = 0; oi < offices.length; oi++) {
                 var thisOffice = offices[oi];
                 if (!trackedOffices.has(thisOffice)) continue;
+                if (seenOfficesForOFreq.has(thisOffice)) continue;
+                seenOfficesForOFreq.add(thisOffice);
                 if (!officeFreq[thisOffice]) officeFreq[thisOffice] = { office: thisOffice, '0': 0, '1': 0, '2': 0, '3': 0, '4+': 0, total: 0 };
                 officeFreq[thisOffice].total++;
 
@@ -4217,13 +4227,14 @@
         var grandTotalUniqueOfficeAppt = 0;
         var grandTotalSharedOfficeAppt = 0;
 
-        // Pre-pass: determine how many offices each student is assigned to (all offices, not just tracked)
-        var studentOfficeCount = {}; // sid -> total number of offices assigned
+        // Pre-pass: determine how many UNIQUE offices each student is assigned to (all offices, not just tracked)
+        var studentOfficeCount = {}; // sid -> total number of unique offices assigned
         for (var pi = 0; pi < filteredData.length; pi++) {
             var pRow = filteredData[pi];
             var pSid = pRow[caseloadCols.studentId];
             var pOffices = parseOffices(pRow[caseloadCols.office]);
-            studentOfficeCount[pSid] = pOffices.length;
+            var uniqueOffices = new Set(pOffices);
+            studentOfficeCount[pSid] = uniqueOffices.size;
         }
 
         for (var i = 0; i < filteredData.length; i++) {
@@ -4286,11 +4297,15 @@
 
             // --- Per-Office calculations (each office row gets this student) ---
             // Only track offices in the trackedOffices list for the main table
+            var seenOfficesForThisStudent = new Set();
             for (var oi2 = 0; oi2 < offices.length; oi2++) {
                 var thisOffice = offices[oi2];
                 
                 // Skip offices not in the tracked list for the main table stats
                 if (!trackedOffices.has(thisOffice)) continue;
+                // Skip duplicate office entries for the same student
+                if (seenOfficesForThisStudent.has(thisOffice)) continue;
+                seenOfficesForThisStudent.add(thisOffice);
                 
                 if (!officeStats[thisOffice]) {
                     officeStats[thisOffice] = { 
@@ -4356,11 +4371,18 @@
             }
 
             // --- Track multi-office students for breakdown section ---
-            if (offices.length > 1) {
-                var sortedOffices = offices
-                    .map(function (o) { return o.trim(); })
-                    .filter(Boolean)
-                    .sort();
+            // Deduplicate offices before checking multi-office status
+            var uniqueOfficesForMulti = [];
+            var seenForMulti = new Set();
+            for (var oi_m = 0; oi_m < offices.length; oi_m++) {
+                var off_m = offices[oi_m].trim();
+                if (off_m && !seenForMulti.has(off_m)) {
+                    seenForMulti.add(off_m);
+                    uniqueOfficesForMulti.push(off_m);
+                }
+            }
+            if (uniqueOfficesForMulti.length > 1) {
+                var sortedOffices = uniqueOfficesForMulti.slice().sort();
                 var key = sortedOffices.join(' + ');
 
                 if (!multi[key]) {
