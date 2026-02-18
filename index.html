@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 6.2</title>
+    <title>LaGuardia Advising Metrics App - Version 6.4</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -336,10 +337,169 @@
             user-select: none;
             position: relative;
             transition: background-color 0.2s ease;
+            white-space: normal;
+            word-wrap: break-word;
         }
 
         .data-table th:hover {
             background: #e9ecef;
+        }
+
+        /* Collapsible sections */
+        .collapsible-header {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .collapsible-header .collapse-arrow {
+            display: inline-block;
+            width: 16px;
+            font-size: 11px;
+            color: #888;
+            transition: transform 0.2s;
+        }
+        .collapsible-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        /* Horizontal bar charts */
+        .hz-chart-container {
+            margin: 12px 0 20px;
+        }
+        .hz-chart-row {
+            display: grid;
+            grid-template-columns: 170px 1fr 55px;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .hz-chart-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #2d2d3f;
+            text-align: right;
+            line-height: 1.2;
+        }
+        .hz-bar-bg {
+            height: 26px;
+            background: #eef0f4;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+        .hz-bar-fill {
+            height: 100%;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .hz-bar-fill.rate-low { background: linear-gradient(135deg, #e8927c, #d4735a); }
+        .hz-bar-fill.rate-mid { background: linear-gradient(135deg, #7eb8da, #5a9ec4); }
+        .hz-bar-fill.rate-high { background: linear-gradient(135deg, #7cc4a5, #4ea882); }
+        .hz-bar-fill.rate-vhigh { background: linear-gradient(135deg, #6b8dd6, #4a6bc4); }
+        .hz-bar-fill.rate-total { background: linear-gradient(135deg, #5b5f97, #3d4076); }
+        .hz-bar-outside {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .hz-chart-count {
+            font-size: 11px;
+            color: #888;
+            text-align: right;
+        }
+        .hz-chart-count .num { font-weight: 600; color: #555; }
+        .hz-chart-divider {
+            height: 1px;
+            background: #e2e5ea;
+            margin: 10px 0;
+        }
+        .hz-chart-row.grand-total .hz-chart-label { font-weight: 700; color: #1a1a2e; }
+        .hz-chart-row.grand-total .hz-chart-count .num { font-weight: 700; color: #333; }
+        /* Comparison bar row */
+        .hz-chart-row-pair {
+            margin-bottom: 10px;
+        }
+        .hz-chart-row-pair .hz-chart-row {
+            margin-bottom: 0;
+        }
+        .hz-prev-row {
+            display: grid;
+            grid-template-columns: 170px 1fr 55px;
+            align-items: center;
+            gap: 10px;
+            margin-top: 2px;
+        }
+        .hz-prev-bar-bg {
+            height: 16px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .hz-prev-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: #c5c9d4;
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 6px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #555;
+        }
+        .hz-prev-bar-fill.prev-total {
+            background: #9a9dba;
+        }
+        .hz-prev-outside {
+            font-size: 10px;
+            font-weight: 500;
+            color: #999;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .hz-change-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-left: 4px;
+        }
+        .hz-change-badge.positive { color: #16a34a; background: #dcfce7; }
+        .hz-change-badge.negative { color: #dc2626; background: #fee2e2; }
+        .hz-change-badge.neutral { color: #888; background: #f3f4f6; }
+        .hz-chart-legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: #888;
+        }
+        .hz-chart-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .hz-chart-legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
         }
 
         .data-table th.sortable {
@@ -736,7 +896,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 6.2 - Released February 17, 2026</div>
+            <div class="subtitle">Version 6.4 - Released February 17, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -862,7 +1022,7 @@
 
                 <div id="by-office-tab" class="tab-content">
                     <h3>Analysis by Office</h3>
-                    <button class="export-pdf-button" onclick="exportOfficeWord()">Export to Word</button>
+                    <button class="export-pdf-button" onclick="exportToExcel('office')">Export to Excel</button>
                     <div id="office-content">
                         <div class="placeholder-message">
                             Upload both files and click "Run Analysis" to see office analysis
@@ -872,7 +1032,7 @@
 
                 <div id="by-advisor-tab" class="tab-content">
                     <h3>Analysis by Advisor</h3>
-                    <button class="export-pdf-button" onclick="exportAdvisorWord()">Export to Word</button>
+                    <button class="export-pdf-button" onclick="exportToExcel('advisor')">Export to Excel</button>
                     <div id="advisor-content">
                         <div class="placeholder-message">
                             Upload both files and click "Run Analysis" to see advisor analysis
@@ -1743,6 +1903,104 @@
         return '<div style="font-size: 13px; opacity: 0.8; margin-top: 4px;">' + prevLabel + ': ' + prevValue + '</div>';
     }
 
+    // Build horizontal bar chart for rate data
+    // items: [{ label, rate, count, isTotal, prevRate (optional), prevLabel (optional) }]
+    function buildHorizontalBarChart(items, options) {
+        options = options || {};
+        var showLegend = options.showLegend !== false;
+        var prevLabel = options.prevLabel || 'Prior';
+        var hasPrev = items.some(function(it) { return it.prevRate !== undefined && it.prevRate !== null; });
+        var html = '<div class="hz-chart-container">';
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            if (item.divider) { html += '<div class="hz-chart-divider"></div>'; continue; }
+            if (item.officeHeader) {
+                html += '<div style="font-size: 13px; font-weight: 700; color: #667eea; margin: 12px 0 6px; border-left: 3px solid #667eea; padding-left: 8px;">' + item.officeHeader + '</div>';
+                continue;
+            }
+            var rate = parseFloat(item.rate) || 0;
+            var colorClass = item.isTotal ? 'rate-total' : (rate < 25 ? 'rate-low' : (rate < 60 ? 'rate-mid' : (rate < 80 ? 'rate-high' : 'rate-vhigh')));
+            var barWidth = rate > 0 ? Math.max(rate, 3) : 0;
+            var labelInside = rate >= 18;
+            var rowClass = 'hz-chart-row' + (item.isTotal ? ' grand-total' : '');
+
+            // Change badge
+            var changeBadge = '';
+            if (item.prevRate !== undefined && item.prevRate !== null) {
+                var diff = rate - parseFloat(item.prevRate);
+                var diffStr = diff >= 0 ? '+' + diff.toFixed(1) : diff.toFixed(1);
+                var diffClass = diff > 0.05 ? 'positive' : (diff < -0.05 ? 'negative' : 'neutral');
+                changeBadge = '<span class="hz-change-badge ' + diffClass + '">' + diffStr + 'pp</span>';
+            }
+
+            if (hasPrev) {
+                html += '<div class="hz-chart-row-pair">';
+            }
+
+            html += '<div class="' + rowClass + '">';
+            html += '<div class="hz-chart-label">' + item.label + '</div>';
+            html += '<div class="hz-bar-bg">';
+            html += '<div class="hz-bar-fill ' + colorClass + '" style="width:' + barWidth + '%">';
+            if (labelInside) html += item.rate + '%';
+            html += '</div>';
+            if (!labelInside && rate > 0) html += '<span class="hz-bar-outside" style="left:' + (barWidth + 1) + '%">' + item.rate + '%</span>';
+            html += '</div>';
+            html += '<div class="hz-chart-count"><span class="num">' + (item.count !== undefined && item.count !== null && item.count !== '' ? item.count.toLocaleString() : '0') + '</span>' + changeBadge + '</div>';
+            html += '</div>';
+
+            // Previous semester bar
+            if (hasPrev) {
+                var prevRate = item.prevRate !== undefined && item.prevRate !== null ? parseFloat(item.prevRate) : -1;
+                var prevCountStr = (item.prevCount !== undefined && item.prevCount !== null) ? '<span style="font-size:10px;color:#aaa;">' + item.prevCount.toLocaleString() + '</span>' : '';
+                if (prevRate >= 0) {
+                    var prevBarWidth = prevRate > 0 ? Math.max(prevRate, 2) : 0;
+                    var prevLabelInside = prevRate >= 20;
+                    var prevFillClass = item.isTotal ? 'prev-total' : '';
+                    html += '<div class="hz-prev-row">';
+                    html += '<div style="font-size:10px;color:#aaa;text-align:right;">' + prevLabel + '</div>';
+                    html += '<div class="hz-prev-bar-bg">';
+                    html += '<div class="hz-prev-bar-fill ' + prevFillClass + '" style="width:' + prevBarWidth + '%">';
+                    if (prevLabelInside) html += item.prevRate + '%';
+                    html += '</div>';
+                    if (!prevLabelInside && prevRate > 0) html += '<span class="hz-prev-outside" style="left:' + (prevBarWidth + 1) + '%">' + item.prevRate + '%</span>';
+                    html += '</div>';
+                    html += '<div class="hz-chart-count">' + prevCountStr + '</div>';
+                    html += '</div>';
+                } else {
+                    html += '<div class="hz-prev-row"><div style="font-size:10px;color:#ccc;text-align:right;">' + prevLabel + '</div><div class="hz-prev-bar-bg"></div><div class="hz-chart-count">' + prevCountStr + '</div></div>';
+                }
+                html += '</div>'; // close pair
+            }
+        }
+        if (showLegend) {
+            html += '<div class="hz-chart-legend">';
+            html += '<div class="hz-chart-legend-item"><div class="hz-chart-legend-dot" style="background:#d4735a;"></div> &lt; 25%</div>';
+            html += '<div class="hz-chart-legend-item"><div class="hz-chart-legend-dot" style="background:#5a9ec4;"></div> 25–59%</div>';
+            html += '<div class="hz-chart-legend-item"><div class="hz-chart-legend-dot" style="background:#4ea882;"></div> 60–79%</div>';
+            html += '<div class="hz-chart-legend-item"><div class="hz-chart-legend-dot" style="background:#4a6bc4;"></div> 80%+</div>';
+            if (hasPrev) {
+                html += '<div class="hz-chart-legend-item" style="margin-left:12px;"><div class="hz-chart-legend-dot" style="background:#c5c9d4;opacity:0.7;"></div> ' + prevLabel + '</div>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // Wrap content in a collapsible section (collapsed by default)
+    function wrapCollapsible(title, content, startOpen) {
+        var display = startOpen ? 'block' : 'none';
+        var arrow = startOpen ? '▼' : '►';
+        var html = '<div style="margin: 16px 0 8px;">';
+        html += '<div class="collapsible-header" onclick="var c=this.nextElementSibling;var a=this.querySelector(\'.collapse-arrow\');if(c.style.display===\'none\'){c.style.display=\'block\';a.textContent=\'▼\';}else{c.style.display=\'none\';a.textContent=\'►\';}">';
+        html += '<span class="collapse-arrow">' + arrow + '</span>';
+        html += '<span style="font-size:13px;color:#555;">' + title + '</span>';
+        html += '</div>';
+        html += '<div style="display:' + display + ';">' + content + '</div>';
+        html += '</div>';
+        return html;
+    }
+
     // ===== Run Analysis =====
     function runAnalysis() {
         if (!caseloadData || !appointmentData) {
@@ -2393,25 +2651,82 @@
         var officeCount = parseInt(document.getElementById('overall-coverage-metric').textContent.match(/\((\d+)\)/)[1], 10);
         var noAppointments = totalStudents - officeCount;
 
-        var overviewHTML = '<p><strong>Key Insights:</strong></p>';
-        overviewHTML += '<ul>';
-        overviewHTML += '<li>' + assignedCount + ' of ' + totalStudents + ' students (' + ((assignedCount / totalStudents) * 100).toFixed(1) + '%) have met with their assigned advisor</li>';
-        overviewHTML += '<li>' + officeCount + ' of ' + totalStudents + ' students (' + ((officeCount / totalStudents) * 100).toFixed(1) + '%) have met with any advisor from their office</li>';
-        overviewHTML += '<li>' + noAppointments + ' students (' + ((noAppointments / totalStudents) * 100).toFixed(1) + '%) have not had any appointments</li>';
-        overviewHTML += '</ul>';
+        var overviewHTML = '';
+        var overviewPrevLabel = hasPrevSemester() ? getPrevSemesterLabel() : '';
+
+        // Compute prev semester analytics if available
+        var prevCreditsAnalytics = null, prevGpaAnalytics = null;
+        if (hasPrevSemester() && prevFilteredData && prevFilteredData.length > 0 && prevIdx) {
+            prevCreditsAnalytics = calculateCreditsAnalytics(prevFilteredData, prevIdx);
+            prevGpaAnalytics = calculateGpaAnalytics(prevFilteredData, prevIdx);
+        }
 
         // Analysis by Earned Credits
         var creditsAnalytics = calculateCreditsAnalytics();
         if (creditsAnalytics && Object.keys(creditsAnalytics).length > 0) {
-            overviewHTML += '<h4 style="margin-top: 30px; margin-bottom: 15px; color: #2c3e50;">📊 Analysis by Earned Credits</h4>';
-            overviewHTML += buildOverviewTable(creditsAnalytics);
+            overviewHTML += '<h4 style="margin-top: 20px; margin-bottom: 10px; color: #2c3e50;">📊 Analysis by Earned Credits</h4>';
+            var creditKeys = Object.keys(creditsAnalytics).sort(function(a,b) {
+                if (a === 'Missing Credits') return 1;
+                if (b === 'Missing Credits') return -1;
+                var na = parseInt(a) || 0, nb = parseInt(b) || 0;
+                return na - nb;
+            });
+            var creditItems = [];
+            var creditTotalS = 0, creditTotalA = 0;
+            var prevCreditTotalS = 0, prevCreditTotalA = 0;
+            for (var ci = 0; ci < creditKeys.length; ci++) {
+                var ck = creditKeys[ci], cs = creditsAnalytics[ck];
+                var cRate = cs.totalStudents ? ((cs.studentsWithOfficeAppointments / cs.totalStudents) * 100).toFixed(1) : '0.0';
+                var cPrevRate = null;
+                if (prevCreditsAnalytics && prevCreditsAnalytics[ck]) {
+                    var pcs = prevCreditsAnalytics[ck];
+                    cPrevRate = pcs.totalStudents ? ((pcs.studentsWithOfficeAppointments / pcs.totalStudents) * 100).toFixed(1) : '0.0';
+                    prevCreditTotalS += pcs.totalStudents;
+                    prevCreditTotalA += pcs.studentsWithOfficeAppointments;
+                }
+                creditItems.push({ label: ck, rate: cRate, count: cs.totalStudents, prevRate: cPrevRate });
+                creditTotalS += cs.totalStudents;
+                creditTotalA += cs.studentsWithOfficeAppointments;
+            }
+            creditItems.push({ divider: true });
+            var creditTotalPrevRate = prevCreditTotalS ? ((prevCreditTotalA / prevCreditTotalS) * 100).toFixed(1) : null;
+            creditItems.push({ label: 'TOTAL', rate: creditTotalS ? ((creditTotalA / creditTotalS) * 100).toFixed(1) : '0.0', count: creditTotalS, isTotal: true, prevRate: creditTotalPrevRate });
+            overviewHTML += buildHorizontalBarChart(creditItems, { prevLabel: overviewPrevLabel });
+            overviewHTML += wrapCollapsible('Show Data Table', buildOverviewTable(creditsAnalytics));
         }
 
         // Analysis by Cumulative GPA
         var gpaAnalytics = calculateGpaAnalytics();
         if (gpaAnalytics && Object.keys(gpaAnalytics).length > 0) {
-            overviewHTML += '<h4 style="margin-top: 30px; margin-bottom: 15px; color: #2c3e50;">📊 Analysis by Cumulative GPA</h4>';
-            overviewHTML += buildOverviewTable(gpaAnalytics);
+            overviewHTML += '<h4 style="margin-top: 30px; margin-bottom: 10px; color: #2c3e50;">📊 Analysis by Cumulative GPA</h4>';
+            var gpaKeys = Object.keys(gpaAnalytics).sort(function(a,b) {
+                if (a === 'Missing GPA') return 1;
+                if (b === 'Missing GPA') return -1;
+                var na = parseFloat(a) || 0, nb = parseFloat(b) || 0;
+                return na - nb;
+            });
+            var gpaItems = [];
+            var gpaTotalS = 0, gpaTotalA = 0;
+            var prevGpaTotalS = 0, prevGpaTotalA = 0;
+            for (var gi = 0; gi < gpaKeys.length; gi++) {
+                var gk = gpaKeys[gi], gs = gpaAnalytics[gk];
+                var gRate = gs.totalStudents ? ((gs.studentsWithOfficeAppointments / gs.totalStudents) * 100).toFixed(1) : '0.0';
+                var gPrevRate = null;
+                if (prevGpaAnalytics && prevGpaAnalytics[gk]) {
+                    var pgs = prevGpaAnalytics[gk];
+                    gPrevRate = pgs.totalStudents ? ((pgs.studentsWithOfficeAppointments / pgs.totalStudents) * 100).toFixed(1) : '0.0';
+                    prevGpaTotalS += pgs.totalStudents;
+                    prevGpaTotalA += pgs.studentsWithOfficeAppointments;
+                }
+                gpaItems.push({ label: gk, rate: gRate, count: gs.totalStudents, prevRate: gPrevRate });
+                gpaTotalS += gs.totalStudents;
+                gpaTotalA += gs.studentsWithOfficeAppointments;
+            }
+            gpaItems.push({ divider: true });
+            var gpaTotalPrevRate = prevGpaTotalS ? ((prevGpaTotalA / prevGpaTotalS) * 100).toFixed(1) : null;
+            gpaItems.push({ label: 'TOTAL', rate: gpaTotalS ? ((gpaTotalA / gpaTotalS) * 100).toFixed(1) : '0.0', count: gpaTotalS, isTotal: true, prevRate: gpaTotalPrevRate });
+            overviewHTML += buildHorizontalBarChart(gpaItems, { prevLabel: overviewPrevLabel });
+            overviewHTML += wrapCollapsible('Show Data Table', buildOverviewTable(gpaAnalytics));
         }
 
         document.getElementById('overview-content').innerHTML = overviewHTML;
@@ -2453,10 +2768,12 @@
         return stats;
     }
 
-    function calculateCreditsAnalytics() {
-        if (!filteredData || !filteredAppointmentData || !idx) return null;
-        var caseloadCols = idx.caseloadCols;
-        var colName = findColumn(Object.keys(filteredData[0]), ['Earned Credits', 'Credits Earned', 'Earned_Credits']);
+    function calculateCreditsAnalytics(dataOverride, idxOverride) {
+        var useData = dataOverride || filteredData;
+        var useIdx = idxOverride || idx;
+        if (!useData || !useIdx) return null;
+        var caseloadCols = useIdx.caseloadCols;
+        var colName = findColumn(Object.keys(useData[0]), ['Earned Credits', 'Credits Earned', 'Earned_Credits']);
         if (!colName) return null;
 
         var stats = {};
@@ -2470,15 +2787,15 @@
             return '46+';
         }
 
-        for (var i = 0; i < filteredData.length; i++) {
-            var s = filteredData[i];
+        for (var i = 0; i < useData.length; i++) {
+            var s = useData[i];
             var bucket = getBucket(s[colName]);
             if (!stats[bucket]) stats[bucket] = { totalStudents: 0, studentsWithOfficeAppointments: 0 };
             stats[bucket].totalStudents++;
 
             var sid = s[caseloadCols.studentId];
             var office = s[caseloadCols.office];
-            var offices = idx.officesByStudent.get(sid);
+            var offices = useIdx.officesByStudent.get(sid);
 
             if (offices && office) {
                 var officeList = String(office)
@@ -2496,10 +2813,12 @@
         return stats;
     }
 
-    function calculateGpaAnalytics() {
-        if (!filteredData || !filteredAppointmentData || !idx) return null;
-        var caseloadCols = idx.caseloadCols;
-        var colName = findColumn(Object.keys(filteredData[0]), ['Cumulative GPA', 'GPA', 'Cumulative_GPA']);
+    function calculateGpaAnalytics(dataOverride, idxOverride) {
+        var useData = dataOverride || filteredData;
+        var useIdx = idxOverride || idx;
+        if (!useData || !useIdx) return null;
+        var caseloadCols = useIdx.caseloadCols;
+        var colName = findColumn(Object.keys(useData[0]), ['Cumulative GPA', 'GPA', 'Cumulative_GPA']);
         if (!colName) return null;
 
         var stats = {};
@@ -2513,15 +2832,15 @@
             return '3.0+';
         }
 
-        for (var i = 0; i < filteredData.length; i++) {
-            var s = filteredData[i];
+        for (var i = 0; i < useData.length; i++) {
+            var s = useData[i];
             var bucket = getBucket(s[colName]);
             if (!stats[bucket]) stats[bucket] = { totalStudents: 0, studentsWithOfficeAppointments: 0 };
             stats[bucket].totalStudents++;
 
             var sid = s[caseloadCols.studentId];
             var office = s[caseloadCols.office];
-            var offices = idx.officesByStudent.get(sid);
+            var offices = useIdx.officesByStudent.get(sid);
 
             if (offices && office) {
                 var officeList = String(office)
@@ -2938,17 +3257,38 @@
             var prevApptCols2 = prevIdx.apptCols;
             var prevAdvisingAppts = prevIdx.advisingApptsByStudent || prevIdx.apptsByStudent;
             var prevStaffToStudents = new Map();
+            var prevStaffNames = {};   // staffId -> name
+            var prevStaffOffices = {}; // staffId -> office (most common)
+            var prevStaffOfficeCounts = {}; // staffId -> { office: count }
             for (var pi = 0; pi < prevFilteredData.length; pi++) {
                 var pRow = prevFilteredData[pi];
                 var pSid = pRow[prevCaseloadCols2.studentId];
                 if (!pSid) continue;
                 var pStaffIds = parseList(pRow[prevCaseloadCols2.staffId]);
+                var pAdvisors = parseList(pRow[prevCaseloadCols2.advisor]);
+                var pOffices = parseList(pRow[prevCaseloadCols2.office]).map(normalizeOfficeName);
                 for (var psi = 0; psi < pStaffIds.length; psi++) {
                     var pStaffId = normalizeId(pStaffIds[psi]);
                     if (!pStaffId) continue;
                     if (!prevStaffToStudents.has(pStaffId)) prevStaffToStudents.set(pStaffId, new Set());
                     prevStaffToStudents.get(pStaffId).add(pSid);
+                    if (pAdvisors[psi] && !prevStaffNames[pStaffId]) prevStaffNames[pStaffId] = pAdvisors[psi];
+                    if (pOffices[psi]) {
+                        if (!prevStaffOfficeCounts[pStaffId]) prevStaffOfficeCounts[pStaffId] = {};
+                        prevStaffOfficeCounts[pStaffId][pOffices[psi]] = (prevStaffOfficeCounts[pStaffId][pOffices[psi]] || 0) + 1;
+                    }
                 }
+            }
+            // Determine most common office per staff
+            for (var psoc in prevStaffOfficeCounts) {
+                var bestOffice = '', bestCount = 0;
+                for (var pOff in prevStaffOfficeCounts[psoc]) {
+                    if (prevStaffOfficeCounts[psoc][pOff] > bestCount) {
+                        bestCount = prevStaffOfficeCounts[psoc][pOff];
+                        bestOffice = pOff;
+                    }
+                }
+                prevStaffOffices[psoc] = bestOffice;
             }
             prevStaffToStudents.forEach(function(studentSet, staffId) {
                 var total = studentSet.size;
@@ -2976,13 +3316,82 @@
                 });
                 var rate = total > 0 ? (assigned / total) * 100 : 0;
                 var assignedPct = totalAppts > 0 ? (assignedAppts / totalAppts) * 100 : 0;
-                prevAdvisorMap[staffId] = { totalStudents: total, assignedAppointments: assigned, assignedRate: rate, totalAppointments: totalAppts, assignedPercentage: assignedPct };
+                prevAdvisorMap[staffId] = { totalStudents: total, assignedAppointments: assigned, assignedRate: rate, totalAppointments: totalAppts, assignedPercentage: assignedPct, name: prevStaffNames[staffId] || staffId, office: prevStaffOffices[staffId] || 'Unknown' };
             });
         }
         var prevLabelAdv = hasPrevSemester() ? getPrevSemesterLabel() : '';
 
-        // --- Build table HTML ---
-        var tableHTML = '<table class="data-table" id="advisor-table">' +
+        // --- Assigned Rate by Advisor chart (grouped by office) ---
+        var tableHTML = '';
+        tableHTML += '<h4 style="margin: 10px 0 8px;">Assigned Advisor Rate by Advisor</h4>';
+        tableHTML += '<p style="margin-bottom: 8px; color: #6c757d; font-size: 13px;"><em>% of each advisor\'s assigned students who met with them, grouped by office.</em></p>';
+
+        // Build merged advisor list: union of current + prev semester, grouped by office
+        var mergedAdvisors = {};  // staffId -> { advisor, office, rate, count, prevRate }
+        for (var mai = 0; mai < advisorArray.length; mai++) {
+            var ma = advisorArray[mai];
+            mergedAdvisors[ma.staffId] = {
+                advisor: ma.advisor,
+                office: ma.office || 'Unknown',
+                rate: ma.assignedRate.toFixed(1),
+                count: ma.totalStudents,
+                prevRate: null,
+                prevCount: null
+            };
+        }
+        // Merge previous semester advisors
+        if (prevAdvisorMap) {
+            // We need advisor names/offices for prev-only advisors — get from prev staffIdToInfo
+            // For advisors in both, just set prevRate
+            for (var prevStaffId in prevAdvisorMap) {
+                var pAdv = prevAdvisorMap[prevStaffId];
+                if (mergedAdvisors[prevStaffId]) {
+                    mergedAdvisors[prevStaffId].prevRate = pAdv.assignedRate.toFixed(1);
+                    mergedAdvisors[prevStaffId].prevCount = pAdv.totalStudents;
+                } else {
+                    // Prev-only advisor
+                    mergedAdvisors[prevStaffId] = {
+                        advisor: pAdv.name || prevStaffId,
+                        office: pAdv.office || 'Unknown',
+                        rate: null,
+                        count: null,
+                        prevRate: pAdv.assignedRate.toFixed(1),
+                        prevCount: pAdv.totalStudents
+                    };
+                }
+            }
+        }
+        // Sort merged advisors by office then name
+        var mergedKeys = Object.keys(mergedAdvisors).sort(function(a, b) {
+            var oa = (mergedAdvisors[a].office || '').toLowerCase();
+            var ob = (mergedAdvisors[b].office || '').toLowerCase();
+            if (oa < ob) return -1;
+            if (oa > ob) return 1;
+            var na = (mergedAdvisors[a].advisor || '').toLowerCase();
+            var nb = (mergedAdvisors[b].advisor || '').toLowerCase();
+            return na.localeCompare(nb);
+        });
+
+        var advChartItems = [];
+        var advCurOffice = '';
+        for (var mki = 0; mki < mergedKeys.length; mki++) {
+            var mk = mergedKeys[mki], md = mergedAdvisors[mk];
+            if (md.office !== advCurOffice) {
+                advCurOffice = md.office;
+                advChartItems.push({ officeHeader: advCurOffice });
+            }
+            advChartItems.push({
+                label: md.advisor,
+                rate: md.rate !== null ? md.rate : '0.0',
+                count: md.count !== null ? md.count : '',
+                prevRate: md.prevRate,
+                prevCount: md.prevCount
+            });
+        }
+        tableHTML += buildHorizontalBarChart(advChartItems, { prevLabel: prevLabelAdv });
+
+        // --- Build table HTML (collapsible, no comparison data) ---
+        var advisorTableContent = '<table class="data-table" id="advisor-table">' +
             '<thead><tr>' +
             '<th class="sortable" onclick="sortAdvisorTable(0, \'string\')">Professional Advisor</th>' +
             '<th class="sortable" onclick="sortAdvisorTable(1, \'string\')">Advising Office</th>' +
@@ -2997,34 +3406,33 @@
             var r = advisorArray[iArr];
             var assignedRateDisplay = r.assignedRate.toFixed(1);
             var assignedPctDisplay = r.assignedPercentage.toFixed(1);
-            var prevAdv = prevAdvisorMap && prevAdvisorMap[r.staffId] ? prevAdvisorMap[r.staffId] : null;
-            var prevRateDisplay = prevAdv ? prevAdv.assignedRate.toFixed(1) : null;
-            var prevPctDisplay = prevAdv ? prevAdv.assignedPercentage.toFixed(1) : null;
 
-            tableHTML += '<tr>' +
+            advisorTableContent += '<tr>' +
                 '<td>' + r.advisor + '</td>' +
                 '<td>' + (r.office || '') + '</td>' +
-                '<td>' + r.totalStudents + (prevAdv ? '<br><span style="font-size:11px;color:#888;">' + prevLabelAdv + ': ' + prevAdv.totalStudents + '</span>' : '') + '</td>' +
+                '<td>' + r.totalStudents + '</td>' +
                 '<td>' + r.assignedAppointments + '</td>' +
-                '<td>' + assignedRateDisplay + '%' + (prevRateDisplay !== null ? comparisonBadge(parseFloat(assignedRateDisplay), parseFloat(prevRateDisplay)) + '<br><span style="font-size:11px;color:#888;">' + prevLabelAdv + ': ' + prevRateDisplay + '%</span>' : '') + '</td>' +
+                '<td>' + assignedRateDisplay + '%</td>' +
                 '<td>' + r.totalAppointments + '</td>' +
-                '<td>' + assignedPctDisplay + '%' + (prevPctDisplay !== null ? comparisonBadge(parseFloat(assignedPctDisplay), parseFloat(prevPctDisplay)) + '<br><span style="font-size:11px;color:#888;">' + prevLabelAdv + ': ' + prevPctDisplay + '%</span>' : '') + '</td>' +
+                '<td>' + assignedPctDisplay + '%</td>' +
                 '</tr>';
         }
 
-        tableHTML += '</tbody></table>';
+        advisorTableContent += '</tbody></table>';
+        tableHTML += wrapCollapsible('Show Advisor Table', advisorTableContent);
 
         // --- Appointment Frequency by Advisor ---
         tableHTML += '<h4 style="margin: 24px 0 8px;">📊 Appointment Frequency by Advisor</h4>';
         tableHTML += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>Distribution of how many advising appointments each assigned student had with their specific assigned advisor.</em></p>';
         var advisorFreq = computeAdvisorFrequency(filteredData, filteredAppointmentData, idx, advisorArray);
         tableHTML += buildFrequencyChart(advisorFreq, 'name');
-        tableHTML += buildFrequencyTable(advisorFreq, 'Professional Advisor', 'name');
+        tableHTML += wrapCollapsible('Show Frequency Table', buildFrequencyTable(advisorFreq, 'Professional Advisor', 'name'));
 
         document.getElementById('advisor-content').innerHTML = tableHTML;
     
-        // Used by PDF export and sorting on click
+        // Used by Excel export and sorting on click
         window.advisorTableData = advisorArray;
+        window._prevAdvisorMapForExport = prevAdvisorMap;
         window.advisorSortColumn = -1;    // so first click sorts fresh
         window.advisorSortDirection = 'asc';
     
@@ -4043,93 +4451,113 @@
             html += '</div>';
         }
 
-        html += '<h4 style="margin: 10px 0 8px;">Analysis by Advising Office</h4>';
-        html += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>Note: Office rows include all students assigned to that office, including students who may also be assigned to other offices. As a result, office row totals may sum to more than the grand total, which counts each student only once.</em></p>';
-        html += '<table class="data-table"><thead><tr>';
-        html += '<th>Advising Office</th><th>Total Students</th><th>Unique</th><th>Shared</th>';
-        html += '<th>Assigned Advisor Appts</th><th>Rate</th>';
-        html += '<th>Office Appt</th><th>Rate</th>';
-        html += '</tr></thead><tbody>';
-
         var officeKeys = Object.keys(officeStats).sort(function (a, b) { return a.localeCompare(b); });
+
+        // === ASSIGNED ADVISOR RATE BAR CHART ===
+        html += '<h4 style="margin: 10px 0 8px;">Assigned Advisor Appointment Rate by Office</h4>';
+        html += '<p style="margin-bottom: 8px; color: #6c757d; font-size: 13px;"><em>% of assigned students who met with their assigned advisor at each office.</em></p>';
+        var assignedChartItems = [];
+        for (var aci = 0; aci < officeKeys.length; aci++) {
+            var acOff = officeKeys[aci], acSt = officeStats[acOff];
+            var acRate = acSt.totalStudents ? ((acSt.assignedAdvisorCount / acSt.totalStudents) * 100).toFixed(1) : '0.0';
+            var acPrevSt = prevOfficeResult && prevOfficeResult.officeStats[acOff] ? prevOfficeResult.officeStats[acOff] : null;
+            var acPrevRate = acPrevSt && acPrevSt.totalStudents ? ((acPrevSt.assignedAdvisorCount / acPrevSt.totalStudents) * 100).toFixed(1) : null;
+            assignedChartItems.push({ label: acOff, rate: acRate, count: acSt.totalStudents, prevRate: acPrevRate, prevCount: acPrevSt ? acPrevSt.totalStudents : null });
+        }
+        assignedChartItems.push({ divider: true });
+        var gS = uniqueStudents.size;
+        var gAssignedRate = gS ? ((grandTotalAssignedAdvisor / gS) * 100).toFixed(1) : '0.0';
+        var prevGS = prevOfficeResult ? prevOfficeResult.uniqueStudents.size : null;
+        var prevGAssignedRate = prevGS ? ((prevOfficeResult.grandTotalAssignedAdvisor / prevGS) * 100).toFixed(1) : null;
+        assignedChartItems.push({ label: 'GRAND TOTAL<br><span style="font-weight:400;font-size:10px;color:#888;">(Unduplicated)</span>', rate: gAssignedRate, count: gS, isTotal: true, prevRate: prevGAssignedRate, prevCount: prevGS });
+        html += buildHorizontalBarChart(assignedChartItems, { prevLabel: prevLabel });
+
+        // === OFFICE APPOINTMENT RATE BAR CHART ===
+        html += '<h4 style="margin: 24px 0 8px;">Office Appointment Rate by Office</h4>';
+        html += '<p style="margin-bottom: 8px; color: #6c757d; font-size: 13px;"><em>% of assigned students who had any appointment at their assigned office.</em></p>';
+        var officeChartItems = [];
+        for (var oci = 0; oci < officeKeys.length; oci++) {
+            var ocOff = officeKeys[oci], ocSt = officeStats[ocOff];
+            var ocRate = ocSt.totalStudents ? ((ocSt.officeAppointments / ocSt.totalStudents) * 100).toFixed(1) : '0.0';
+            var ocPrevSt = prevOfficeResult && prevOfficeResult.officeStats[ocOff] ? prevOfficeResult.officeStats[ocOff] : null;
+            var ocPrevRate = ocPrevSt && ocPrevSt.totalStudents ? ((ocPrevSt.officeAppointments / ocPrevSt.totalStudents) * 100).toFixed(1) : null;
+            officeChartItems.push({ label: ocOff, rate: ocRate, count: ocSt.totalStudents, prevRate: ocPrevRate, prevCount: ocPrevSt ? ocPrevSt.totalStudents : null });
+        }
+        officeChartItems.push({ divider: true });
+        var gOfficeRate = gS ? ((grandTotalOfficeAppt / gS) * 100).toFixed(1) : '0.0';
+        var prevGOfficeRate = prevGS ? ((prevOfficeResult.grandTotalOfficeAppt / prevGS) * 100).toFixed(1) : null;
+        officeChartItems.push({ label: 'GRAND TOTAL<br><span style="font-weight:400;font-size:10px;color:#888;">(Unduplicated)</span>', rate: gOfficeRate, count: gS, isTotal: true, prevRate: prevGOfficeRate, prevCount: prevGS });
+        html += buildHorizontalBarChart(officeChartItems, { showLegend: false, prevLabel: prevLabel });
+
+        // === MAIN TABLE (collapsible) ===
+        var mainTableHtml = '';
+        mainTableHtml += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>Note: Office rows include all students assigned to that office, including students who may also be assigned to other offices. As a result, office row totals may sum to more than the grand total, which counts each student only once.</em></p>';
+        mainTableHtml += '<table class="data-table"><thead><tr>';
+        mainTableHtml += '<th>Advising Office</th><th>Total Students</th><th>Unique</th><th>Shared</th>';
+        mainTableHtml += '<th>Assigned Advisor Appts</th><th>Rate</th>';
+        mainTableHtml += '<th>Office Appt</th><th>Rate</th>';
+        mainTableHtml += '</tr></thead><tbody>';
 
         for (var k = 0; k < officeKeys.length; k++) {
             var off = officeKeys[k], st = officeStats[off];
             var assignedRate = st.totalStudents ? ((st.assignedAdvisorCount / st.totalStudents) * 100).toFixed(1) : '0.0';
             var officeRate = st.totalStudents ? ((st.officeAppointments / st.totalStudents) * 100).toFixed(1) : '0.0';
 
-            // Previous semester comparison
-            var prevSt = prevOfficeResult && prevOfficeResult.officeStats[off] ? prevOfficeResult.officeStats[off] : null;
-            var prevAssignedRate = prevSt && prevSt.totalStudents ? ((prevSt.assignedAdvisorCount / prevSt.totalStudents) * 100).toFixed(1) : null;
-            var prevOfficeRate = prevSt && prevSt.totalStudents ? ((prevSt.officeAppointments / prevSt.totalStudents) * 100).toFixed(1) : null;
-
-            html += '<tr>';
-            html += '<td>' + off + '</td>';
-            html += '<td>' + st.totalStudents + (prevSt ? '<br><span style="font-size:11px;color:#888;">' + prevLabel + ': ' + prevSt.totalStudents + '</span>' : '') + '</td>';
-            html += '<td>' + st.uniqueStudents + '</td>';
-            html += '<td>' + st.sharedStudents + '</td>';
-            html += '<td>' + st.assignedAdvisorCount + '</td>';
-            html += '<td>' + assignedRate + '%' + (prevAssignedRate !== null ? comparisonBadge(parseFloat(assignedRate), parseFloat(prevAssignedRate)) + '<br><span style="font-size:11px;color:#888;">' + prevLabel + ': ' + prevAssignedRate + '%</span>' : '') + '</td>';
-            html += '<td>' + st.officeAppointments + '</td>';
-            html += '<td>' + officeRate + '%' + (prevOfficeRate !== null ? comparisonBadge(parseFloat(officeRate), parseFloat(prevOfficeRate)) + '<br><span style="font-size:11px;color:#888;">' + prevLabel + ': ' + prevOfficeRate + '%</span>' : '') + '</td>';
-            html += '</tr>';
+            mainTableHtml += '<tr>';
+            mainTableHtml += '<td>' + off + '</td>';
+            mainTableHtml += '<td>' + st.totalStudents + '</td>';
+            mainTableHtml += '<td>' + st.uniqueStudents + '</td>';
+            mainTableHtml += '<td>' + st.sharedStudents + '</td>';
+            mainTableHtml += '<td>' + st.assignedAdvisorCount + '</td>';
+            mainTableHtml += '<td>' + assignedRate + '%</td>';
+            mainTableHtml += '<td>' + st.officeAppointments + '</td>';
+            mainTableHtml += '<td>' + officeRate + '%</td>';
+            mainTableHtml += '</tr>';
         }
         
-        // Grand Total Row (unduplicated students)
-        var gS = uniqueStudents.size;
-        var gAssignedRate = gS ? ((grandTotalAssignedAdvisor / gS) * 100).toFixed(1) : '0.0';
-        var gOfficeRate = gS ? ((grandTotalOfficeAppt / gS) * 100).toFixed(1) : '0.0';
+        // Grand Total Row
+        mainTableHtml += '<tr class="grand-total-row">';
+        mainTableHtml += '<td><strong>GRAND TOTAL (Unduplicated)</strong></td>';
+        mainTableHtml += '<td><strong>' + gS + '</strong></td>';
+        mainTableHtml += '<td><strong>' + grandTotalUniqueOnly + '</strong></td>';
+        mainTableHtml += '<td><strong>' + grandTotalSharedOnly + '</strong></td>';
+        mainTableHtml += '<td><strong>' + grandTotalAssignedAdvisor + '</strong></td>';
+        mainTableHtml += '<td><strong>' + gAssignedRate + '%</strong></td>';
+        mainTableHtml += '<td><strong>' + grandTotalOfficeAppt + '</strong></td>';
+        mainTableHtml += '<td><strong>' + gOfficeRate + '%</strong></td>';
+        mainTableHtml += '</tr>';
+        mainTableHtml += '</tbody></table>';
+        html += wrapCollapsible('Show Analysis by Office Table', mainTableHtml);
 
-        var prevGS = prevOfficeResult ? prevOfficeResult.uniqueStudents.size : null;
-        var prevGAssignedRate = prevGS ? ((prevOfficeResult.grandTotalAssignedAdvisor / prevGS) * 100).toFixed(1) : null;
-        var prevGOfficeRate = prevGS ? ((prevOfficeResult.grandTotalOfficeAppt / prevGS) * 100).toFixed(1) : null;
-
-        html += '<tr class="grand-total-row">';
-        html += '<td><strong>GRAND TOTAL (Unduplicated)</strong></td>';
-        html += '<td><strong>' + gS + '</strong>' + (prevGS !== null ? '<br><span style="font-size:11px;opacity:0.8;">' + prevLabel + ': ' + prevGS + '</span>' : '') + '</td>';
-        html += '<td><strong>' + grandTotalUniqueOnly + '</strong></td>';
-        html += '<td><strong>' + grandTotalSharedOnly + '</strong></td>';
-        html += '<td><strong>' + grandTotalAssignedAdvisor + '</strong></td>';
-        html += '<td><strong>' + gAssignedRate + '%</strong>' + (prevGAssignedRate !== null ? comparisonBadge(parseFloat(gAssignedRate), parseFloat(prevGAssignedRate)) + '<br><span style="font-size:11px;opacity:0.8;">' + prevLabel + ': ' + prevGAssignedRate + '%</span>' : '') + '</td>';
-        html += '<td><strong>' + grandTotalOfficeAppt + '</strong></td>';
-        html += '<td><strong>' + gOfficeRate + '%</strong>' + (prevGOfficeRate !== null ? comparisonBadge(parseFloat(gOfficeRate), parseFloat(prevGOfficeRate)) + '<br><span style="font-size:11px;opacity:0.8;">' + prevLabel + ': ' + prevGOfficeRate + '%</span>' : '') + '</td>';
-        html += '</tr>';
-        html += '</tbody></table>';
-
-        // --- Unique vs Shared Student Breakdown Table ---
-        html += '<h4 style="margin: 24px 0 8px;">Assigned Advisor Rate: Unique vs. Shared Students</h4>';
-        html += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>"Unique" students are assigned to only one advising office. "Shared" students are assigned to two or more offices.</em></p>';
-        html += '<table class="data-table"><thead><tr>';
-        html += '<th>Advising Office</th>';
-        html += '<th>Unique Students</th><th>Unique Assigned Rate</th>';
-        html += '<th>Shared Students</th><th>Shared Assigned Rate</th>';
-        html += '</tr></thead><tbody>';
-
+        // === UNIQUE VS SHARED TABLE (collapsible) ===
+        var usTableHtml = '<table class="data-table"><thead><tr>';
+        usTableHtml += '<th>Advising Office</th>';
+        usTableHtml += '<th>Unique Students</th><th>Unique Assigned Rate</th>';
+        usTableHtml += '<th>Shared Students</th><th>Shared Assigned Rate</th>';
+        usTableHtml += '</tr></thead><tbody>';
         for (var usk = 0; usk < officeKeys.length; usk++) {
-            var usOff = officeKeys[usk];
-            var usSt = officeStats[usOff];
+            var usOff = officeKeys[usk], usSt = officeStats[usOff];
             var usUniqueRate = usSt.uniqueStudents ? ((usSt.uniqueAssignedAdvisor / usSt.uniqueStudents) * 100).toFixed(1) : '0.0';
             var usSharedRate = usSt.sharedStudents ? ((usSt.sharedAssignedAdvisor / usSt.sharedStudents) * 100).toFixed(1) : '0.0';
-            html += '<tr>';
-            html += '<td>' + usOff + '</td>';
-            html += '<td>' + usSt.uniqueStudents + '</td>';
-            html += '<td>' + usUniqueRate + '%</td>';
-            html += '<td>' + usSt.sharedStudents + '</td>';
-            html += '<td>' + usSharedRate + '%</td>';
-            html += '</tr>';
+            usTableHtml += '<tr>';
+            usTableHtml += '<td>' + usOff + '</td>';
+            usTableHtml += '<td>' + usSt.uniqueStudents + '</td>';
+            usTableHtml += '<td>' + usUniqueRate + '%</td>';
+            usTableHtml += '<td>' + usSt.sharedStudents + '</td>';
+            usTableHtml += '<td>' + usSharedRate + '%</td>';
+            usTableHtml += '</tr>';
         }
-
-        // Grand total row
         var gtUniqueRate = grandTotalUniqueOnly ? ((grandTotalUniqueAssigned / grandTotalUniqueOnly) * 100).toFixed(1) : '0.0';
         var gtSharedRate = grandTotalSharedOnly ? ((grandTotalSharedAssigned / grandTotalSharedOnly) * 100).toFixed(1) : '0.0';
-        html += '<tr class="grand-total-row">';
-        html += '<td><strong>GRAND TOTAL (Unduplicated)</strong></td>';
-        html += '<td><strong>' + grandTotalUniqueOnly + '</strong></td>';
-        html += '<td><strong>' + gtUniqueRate + '%</strong></td>';
-        html += '<td><strong>' + grandTotalSharedOnly + '</strong></td>';
-        html += '<td><strong>' + gtSharedRate + '%</strong></td>';
-        html += '</tr>';
-        html += '</tbody></table>';
+        usTableHtml += '<tr class="grand-total-row">';
+        usTableHtml += '<td><strong>GRAND TOTAL (Unduplicated)</strong></td>';
+        usTableHtml += '<td><strong>' + grandTotalUniqueOnly + '</strong></td>';
+        usTableHtml += '<td><strong>' + gtUniqueRate + '%</strong></td>';
+        usTableHtml += '<td><strong>' + grandTotalSharedOnly + '</strong></td>';
+        usTableHtml += '<td><strong>' + gtSharedRate + '%</strong></td>';
+        usTableHtml += '</tr>';
+        usTableHtml += '</tbody></table>';
+        html += wrapCollapsible('Show Unique vs. Shared Breakdown Table', usTableHtml);
 
         // --- Multi-Office Breakdown Section (collapsible, collapsed by default) ---
         html += '<div style="margin: 24px 0 8px;">';
@@ -4216,7 +4644,7 @@
             prevAdvisorFreqByOffice = computeAdvisorFreqByOffice(prevFilteredData, prevFilteredAppointmentData, prevIdx);
         }
         html += buildFrequencyChart(advisorFreqByOffice, 'office');
-        html += buildAdvisorFreqByOfficeTable(advisorFreqByOffice, prevAdvisorFreqByOffice);
+        html += wrapCollapsible('Show Frequency Table', buildAdvisorFreqByOfficeTable(advisorFreqByOffice, prevAdvisorFreqByOffice));
 
         // --- Appointment Frequency by Office Section ---
         html += '<h4 style="margin: 24px 0 8px;">📊 Appointment Frequency by Office</h4>';
@@ -4228,12 +4656,24 @@
             prevOfficeFreq = computeOfficeFrequency(prevFilteredData, prevFilteredAppointmentData, prevIdx);
         }
         html += buildFrequencyChart(officeFreq, 'office');
-        html += buildFrequencyTable(officeFreq, 'Advising Office', 'office', filteredData, idx, prevOfficeFreq);
+        html += wrapCollapsible('Show Frequency Table', buildFrequencyTable(officeFreq, 'Advising Office', 'office', filteredData, idx, prevOfficeFreq));
 
         content.innerHTML = html;
-    }
 
-    // ===== By Major Tab =====
+        // Store for Excel export
+        window._officeExportData = {
+            officeStats: officeStats,
+            officeKeys: officeKeys,
+            uniqueStudents: uniqueStudents,
+            grandTotalAssignedAdvisor: grandTotalAssignedAdvisor,
+            grandTotalOfficeAppt: grandTotalOfficeAppt,
+            grandTotalUniqueOnly: grandTotalUniqueOnly,
+            grandTotalSharedOnly: grandTotalSharedOnly,
+            grandTotalUniqueAssigned: grandTotalUniqueAssigned,
+            grandTotalSharedAssigned: grandTotalSharedAssigned,
+            prevOfficeResult: prevOfficeResult
+        };
+    }
     function updateMajorTab() {
         var content = document.getElementById('major-content');
         if (!filteredData || !filteredAppointmentData || !idx) {
@@ -5123,153 +5563,212 @@
         return { mm: mm, dd: dd, yy: yy, longDate: longDate };
     }
 
-    function buildWordDocument(docTitle, headerHtml, bodyHtml) {
-        var safeTitle = escapeHtml(docTitle || 'Report');
-        var html =
-            '<!DOCTYPE html>' +
-            '<html>' +
-            '<head>' +
-            '<meta charset="utf-8">' +
-            '<title>' + safeTitle + '</title>' +
-            '<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">' +
-            '<style>' +
-                '@page { size: 8.5in 11in; margin: 0.5in; }' +
-                'body { font-family: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11pt; color: #222222; }' +
-                'h1 { font-size: 18pt; font-weight: 700; margin-bottom: 4pt; }' +
-                '.subtitle { font-size: 11pt; font-weight: 400; margin: 0 0 2pt 0; color: #555555; }' +
-                '.note { font-size: 10pt; margin: 4pt 0; color: #555555; }' +
-                'p { margin: 0 0 4pt 0; }' +
-                'table { border-collapse: collapse; width: 100%; margin-top: 8pt; }' +
-                'th, td { border: 1px solid #dddddd; padding: 4pt 6pt; font-size: 11pt; vertical-align: top; }' +
-                'th { font-weight: 600; background-color: #f0f3ff; }' +
-                '.grand-total-row td { background-color: #2c3e50; color: #ffffff; font-weight: 700; }' +
-            '</style>' +
-            '</head>' +
-            '<body>' +
-            headerHtml +
-            bodyHtml +
-            '</body>' +
-            '</html>';
-
-        return html;
-    }
-
-    function downloadWordDocument(htmlContent, filename) {
-        var blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
-
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-  function exportAdvisorWord() {
+  function exportToExcel(tabType) {
     try {
-        var container = document.getElementById('advisor-content');
-        if (!container || container.innerHTML.indexOf('placeholder-message') !== -1) {
-            alert('No advisor data available to export. Please run the analysis first.');
+        if (!filteredData || !idx) {
+            alert('No data available to export. Please run the analysis first.');
             return;
         }
+        var wb = XLSX.utils.book_new();
+        var hasPrev = hasPrevSemester() && prevFilteredData && prevFilteredData.length > 0 && prevIdx;
+        var prevLbl = hasPrev ? getPrevSemesterLabel() : '';
 
-        var dateParts = getCurrentDateParts();
-        var docTitle = 'Advising Appointment Advisor Report';
-        var headerHtml =
-            '<h1>' + docTitle + '</h1>' +
-            '<p class="subtitle">Josh Goldblatt, Academic Affairs</p>' +
-            '<p class="subtitle">' + escapeHtml(dateParts.longDate) + '</p>' +
-            '<p class="note">The following report shows assigned students and if an advising summary report was filed. Email, texting and two-way electronic modalities are not counted.</p>' +
-            '<p class="note">The following report includes all students assigned to each advisor, including students shared with other advising offices.</p>';
+        if (tabType === 'office') {
+            var ed = window._officeExportData;
+            if (!ed) { alert('No office data. Please run the analysis first.'); return; }
+            var oStats = ed.officeStats;
+            var oKeys = ed.officeKeys;
+            var prevOffRes = ed.prevOfficeResult;
 
-        var bodyHtml = cleanHtmlForWordExport(container.innerHTML, { removeCharts: true });
-        var docHtml = buildWordDocument(docTitle, headerHtml, bodyHtml);
-        var filename = 'Advising Appointment Advisor Report_' + dateParts.mm + '.' + dateParts.dd + '.' + dateParts.yy + '.doc';
-        downloadWordDocument(docHtml, filename);
-    } catch (error) {
-        console.error('Error exporting advisor report:', error);
-        alert('Failed to export Word document. Please check console for details.');
-    }
-}
-
-function exportOfficeWord() {
-    try {
-        var container = document.getElementById('office-content');
-        if (!container || container.innerHTML.indexOf('placeholder-message') !== -1) {
-            alert('No office data available to export. Please run the analysis first.');
-            return;
-        }
-
-        var dateParts = getCurrentDateParts();
-        var docTitle = 'Advising Appointment Office Report';
-
-        var multiOfficeCount = document.getElementById('multi-office-metric').textContent || '0';
-
-        var headerHtml =
-            '<h1>' + docTitle + '</h1>' +
-            '<p class="subtitle">Josh Goldblatt, Academic Affairs</p>' +
-            '<p class="subtitle">' + escapeHtml(dateParts.longDate) + '</p>' +
-            '<p class="note">The following report shows office-based appointment patterns based on advising summary reports. Email, texting and two-way electronic modalities are not counted.</p>' +
-            '<p class="note">' + multiOfficeCount + ' students are assigned to more than one advising office.</p>';
-
-        // Clean HTML: remove charts and multi-office section for Word export
-        var bodyHtml = cleanHtmlForWordExport(container.innerHTML, { removeCharts: true, removeMultiOffice: true });
-
-        var docHtml = buildWordDocument(docTitle, headerHtml, bodyHtml);
-        var filename = 'Advising Appointment Office Report_' +
-            dateParts.mm + '.' + dateParts.dd + '.' + dateParts.yy + '.doc';
-
-        downloadWordDocument(docHtml, filename);
-    } catch (error) {
-        console.error('Error exporting office report:', error);
-        alert('Failed to export Word document. Please check the console for details.');
-    }
-}
-
-function cleanHtmlForWordExport(html, options) {
-    // options: { removeCharts: true, removeMultiOffice: true }
-    var temp = document.createElement('div');
-    temp.innerHTML = html;
-
-    // Remove bar chart divs (they are the divs with the frequency chart legend + bars)
-    // Charts are wrapped in divs with margin-bottom: 15px that contain the legend + bar rows
-    // Identify them by looking for the legend pattern (colored squares)
-    var allDivs = temp.querySelectorAll('div');
-    var chartsToRemove = [];
-    for (var i = 0; i < allDivs.length; i++) {
-        var div = allDivs[i];
-        // Chart containers have the legend with colored squares and stacked bars
-        // They're top-level divs with style containing margin-bottom: 15px
-        var style = div.getAttribute('style') || '';
-        if (style.indexOf('margin-bottom: 15px') !== -1 && div.innerHTML.indexOf('border-radius: 3px; background:') !== -1) {
-            chartsToRemove.push(div);
-        }
-    }
-    for (var ci = 0; ci < chartsToRemove.length; ci++) {
-        chartsToRemove[ci].parentNode.removeChild(chartsToRemove[ci]);
-    }
-
-    // Remove multi-office section if requested
-    if (options && options.removeMultiOffice) {
-        // The multi-office section is in a collapsible div container
-        // Find h4 containing "Students Assigned to Multiple Advising Offices"
-        var h4s = temp.querySelectorAll('h4');
-        for (var hi = 0; hi < h4s.length; hi++) {
-            if (h4s[hi].textContent.indexOf('Students Assigned to Multiple Advising Offices') !== -1) {
-                // Remove the parent collapsible container div
-                var parentDiv = h4s[hi].parentNode;
-                if (parentDiv && parentDiv.parentNode) {
-                    parentDiv.parentNode.removeChild(parentDiv);
+            // --- By Office sheet ---
+            var officeRows = [];
+            if (hasPrev && prevOffRes) {
+                officeRows.push(['Advising Office', 'Current Students', 'Assigned Advisor Appts', 'Assigned Rate', 'Office Appts', 'Office Rate',
+                    prevLbl + ' Students', prevLbl + ' Assigned Advisor Appts', prevLbl + ' Assigned Rate', prevLbl + ' Office Appts', prevLbl + ' Office Rate',
+                    'Assigned Rate Diff', 'Office Rate Diff']);
+                for (var oi = 0; oi < oKeys.length; oi++) {
+                    var o = oKeys[oi], s = oStats[o];
+                    var aRate = s.totalStudents ? +(s.assignedAdvisorCount / s.totalStudents * 100).toFixed(1) : 0;
+                    var oRate = s.totalStudents ? +(s.officeAppointments / s.totalStudents * 100).toFixed(1) : 0;
+                    var ps = prevOffRes.officeStats[o] || null;
+                    var paRate = ps && ps.totalStudents ? +(ps.assignedAdvisorCount / ps.totalStudents * 100).toFixed(1) : 0;
+                    var poRate = ps && ps.totalStudents ? +(ps.officeAppointments / ps.totalStudents * 100).toFixed(1) : 0;
+                    officeRows.push([o, s.totalStudents, s.assignedAdvisorCount, aRate, s.officeAppointments, oRate,
+                        ps ? ps.totalStudents : '', ps ? ps.assignedAdvisorCount : '', ps ? paRate : '', ps ? ps.officeAppointments : '', ps ? poRate : '',
+                        ps ? +(aRate - paRate).toFixed(1) : '', ps ? +(oRate - poRate).toFixed(1) : '']);
                 }
-                break;
+                var gS = ed.uniqueStudents.size;
+                var gAR = gS ? +(ed.grandTotalAssignedAdvisor / gS * 100).toFixed(1) : 0;
+                var gOR = gS ? +(ed.grandTotalOfficeAppt / gS * 100).toFixed(1) : 0;
+                var pgS = prevOffRes.uniqueStudents.size;
+                var pgAR = pgS ? +(prevOffRes.grandTotalAssignedAdvisor / pgS * 100).toFixed(1) : 0;
+                var pgOR = pgS ? +(prevOffRes.grandTotalOfficeAppt / pgS * 100).toFixed(1) : 0;
+                officeRows.push(['GRAND TOTAL (Unduplicated)', gS, ed.grandTotalAssignedAdvisor, gAR, ed.grandTotalOfficeAppt, gOR,
+                    pgS, prevOffRes.grandTotalAssignedAdvisor, pgAR, prevOffRes.grandTotalOfficeAppt, pgOR,
+                    +(gAR - pgAR).toFixed(1), +(gOR - pgOR).toFixed(1)]);
+            } else {
+                officeRows.push(['Advising Office', 'Students', 'Unique', 'Shared', 'Assigned Advisor Appts', 'Assigned Rate', 'Office Appts', 'Office Rate']);
+                for (var oi2 = 0; oi2 < oKeys.length; oi2++) {
+                    var o2 = oKeys[oi2], s2 = oStats[o2];
+                    var aR2 = s2.totalStudents ? +(s2.assignedAdvisorCount / s2.totalStudents * 100).toFixed(1) : 0;
+                    var oR2 = s2.totalStudents ? +(s2.officeAppointments / s2.totalStudents * 100).toFixed(1) : 0;
+                    officeRows.push([o2, s2.totalStudents, s2.uniqueStudents || 0, s2.sharedStudents || 0, s2.assignedAdvisorCount, aR2, s2.officeAppointments, oR2]);
+                }
+                var gS2 = ed.uniqueStudents.size;
+                var gAR2 = gS2 ? +(ed.grandTotalAssignedAdvisor / gS2 * 100).toFixed(1) : 0;
+                var gOR2 = gS2 ? +(ed.grandTotalOfficeAppt / gS2 * 100).toFixed(1) : 0;
+                officeRows.push(['GRAND TOTAL (Unduplicated)', gS2, ed.grandTotalUniqueOnly || 0, ed.grandTotalSharedOnly || 0,
+                    ed.grandTotalAssignedAdvisor, gAR2, ed.grandTotalOfficeAppt, gOR2]);
             }
-        }
-    }
+            var wsOffice = XLSX.utils.aoa_to_sheet(officeRows);
+            XLSX.utils.book_append_sheet(wb, wsOffice, 'By Office');
 
-    return temp.innerHTML;
-}
+            // --- Unique vs Shared sheet ---
+            var usRows = [['Advising Office', 'Unique Students', 'Unique Assigned Rate', 'Shared Students', 'Shared Assigned Rate']];
+            for (var ui = 0; ui < oKeys.length; ui++) {
+                var uo = oKeys[ui], us = oStats[uo];
+                var uR = (us.uniqueStudents || 0) ? +((us.uniqueAssignedAdvisor || 0) / us.uniqueStudents * 100).toFixed(1) : 0;
+                var sR = (us.sharedStudents || 0) ? +((us.sharedAssignedAdvisor || 0) / us.sharedStudents * 100).toFixed(1) : 0;
+                usRows.push([uo, us.uniqueStudents || 0, uR, us.sharedStudents || 0, sR]);
+            }
+            var gtUq = ed.grandTotalUniqueOnly || 0;
+            var gtSh = ed.grandTotalSharedOnly || 0;
+            var gtUqA = ed.grandTotalUniqueAssigned || 0;
+            var gtShA = ed.grandTotalSharedAssigned || 0;
+            usRows.push(['GRAND TOTAL', gtUq, gtUq ? +(gtUqA / gtUq * 100).toFixed(1) : 0, gtSh, gtSh ? +(gtShA / gtSh * 100).toFixed(1) : 0]);
+            var wsUS = XLSX.utils.aoa_to_sheet(usRows);
+            XLSX.utils.book_append_sheet(wb, wsUS, 'Unique vs Shared');
+
+            // --- Frequency sheets (all on one sheet) ---
+            var freqRows = [];
+            var advisorFreqByOffice = computeAdvisorFreqByOffice(filteredData, filteredAppointmentData, idx);
+            var officeFreq = computeOfficeFrequency(filteredData, filteredAppointmentData, idx);
+            
+            // Frequency with Assigned Advisor by Office
+            freqRows.push(['Appointment Frequency with Assigned Advisor by Office']);
+            freqRows.push(['Office', 'Total', '0 Appts', '% 0', '1 Appt', '% 1', '2 Appts', '% 2', '3 Appts', '% 3', '4+ Appts', '% 4+']);
+            var afKeys = Object.keys(advisorFreqByOffice).filter(function(k){return k !== '_undupTotal';}).sort();
+            for (var afi = 0; afi < afKeys.length; afi++) {
+                var afk = afKeys[afi], afd = advisorFreqByOffice[afk];
+                if (afd.total === 0) continue;
+                freqRows.push([afd.office || afk, afd.total,
+                    afd['0'] || 0, afd.total ? +((afd['0'] || 0) / afd.total * 100).toFixed(1) : 0,
+                    afd['1'] || 0, afd.total ? +((afd['1'] || 0) / afd.total * 100).toFixed(1) : 0,
+                    afd['2'] || 0, afd.total ? +((afd['2'] || 0) / afd.total * 100).toFixed(1) : 0,
+                    afd['3'] || 0, afd.total ? +((afd['3'] || 0) / afd.total * 100).toFixed(1) : 0,
+                    afd['4+'] || 0, afd.total ? +((afd['4+'] || 0) / afd.total * 100).toFixed(1) : 0]);
+            }
+            if (advisorFreqByOffice._undupTotal) {
+                var ut = advisorFreqByOffice._undupTotal;
+                freqRows.push(['GRAND TOTAL (Unduplicated)', ut.total,
+                    ut['0'] || 0, ut.total ? +((ut['0'] || 0) / ut.total * 100).toFixed(1) : 0,
+                    ut['1'] || 0, ut.total ? +((ut['1'] || 0) / ut.total * 100).toFixed(1) : 0,
+                    ut['2'] || 0, ut.total ? +((ut['2'] || 0) / ut.total * 100).toFixed(1) : 0,
+                    ut['3'] || 0, ut.total ? +((ut['3'] || 0) / ut.total * 100).toFixed(1) : 0,
+                    ut['4+'] || 0, ut.total ? +((ut['4+'] || 0) / ut.total * 100).toFixed(1) : 0]);
+            }
+
+            freqRows.push([]);
+            freqRows.push(['Appointment Frequency by Office']);
+            freqRows.push(['Office', 'Total', '0 Appts', '% 0', '1 Appt', '% 1', '2 Appts', '% 2', '3 Appts', '% 3', '4+ Appts', '% 4+']);
+            var ofKeys = Object.keys(officeFreq).filter(function(k){return k !== '_undupTotal';}).sort();
+            for (var ofi = 0; ofi < ofKeys.length; ofi++) {
+                var ofk = ofKeys[ofi], ofd = officeFreq[ofk];
+                if (ofd.total === 0) continue;
+                freqRows.push([ofd.office || ofk, ofd.total,
+                    ofd['0'] || 0, ofd.total ? +((ofd['0'] || 0) / ofd.total * 100).toFixed(1) : 0,
+                    ofd['1'] || 0, ofd.total ? +((ofd['1'] || 0) / ofd.total * 100).toFixed(1) : 0,
+                    ofd['2'] || 0, ofd.total ? +((ofd['2'] || 0) / ofd.total * 100).toFixed(1) : 0,
+                    ofd['3'] || 0, ofd.total ? +((ofd['3'] || 0) / ofd.total * 100).toFixed(1) : 0,
+                    ofd['4+'] || 0, ofd.total ? +((ofd['4+'] || 0) / ofd.total * 100).toFixed(1) : 0]);
+            }
+            if (officeFreq._undupTotal) {
+                var ut2 = officeFreq._undupTotal;
+                freqRows.push(['GRAND TOTAL (Unduplicated)', ut2.total,
+                    ut2['0'] || 0, ut2.total ? +((ut2['0'] || 0) / ut2.total * 100).toFixed(1) : 0,
+                    ut2['1'] || 0, ut2.total ? +((ut2['1'] || 0) / ut2.total * 100).toFixed(1) : 0,
+                    ut2['2'] || 0, ut2.total ? +((ut2['2'] || 0) / ut2.total * 100).toFixed(1) : 0,
+                    ut2['3'] || 0, ut2.total ? +((ut2['3'] || 0) / ut2.total * 100).toFixed(1) : 0,
+                    ut2['4+'] || 0, ut2.total ? +((ut2['4+'] || 0) / ut2.total * 100).toFixed(1) : 0]);
+            }
+
+            var wsFreq = XLSX.utils.aoa_to_sheet(freqRows);
+            XLSX.utils.book_append_sheet(wb, wsFreq, 'Frequency');
+
+            var dateParts = getCurrentDateParts();
+            XLSX.writeFile(wb, 'Advising_Office_Report_' + dateParts.mm + '.' + dateParts.dd + '.' + dateParts.yy + '.xlsx');
+
+        } else if (tabType === 'advisor') {
+            // --- By Advisor sheet ---
+            var advisorData = window.advisorTableData;
+            if (!advisorData || advisorData.length === 0) {
+                alert('No advisor data available. Please run the analysis first.');
+                return;
+            }
+            var prevAdvisorMap2 = window._prevAdvisorMapForExport || null;
+            var advRows = [];
+            if (hasPrev && prevAdvisorMap2) {
+                advRows.push(['Professional Advisor', 'Advising Office',
+                    'Current Students', 'Assigned Appointments', 'Assigned Rate',
+                    'Total Appointments (duplicated)', '% Appts w/ Assigned Students',
+                    prevLbl + ' Students', prevLbl + ' Assigned Appointments', prevLbl + ' Assigned Rate',
+                    'Assigned Rate Diff']);
+                for (var ai = 0; ai < advisorData.length; ai++) {
+                    var a = advisorData[ai];
+                    var aRt = +a.assignedRate.toFixed(1);
+                    var aPct = +a.assignedPercentage.toFixed(1);
+                    var pa = prevAdvisorMap2[a.staffId] || null;
+                    var paRt = pa ? +pa.assignedRate.toFixed(1) : '';
+                    advRows.push([a.advisor, a.office || '', a.totalStudents, a.assignedAppointments, aRt,
+                        a.totalAppointments, aPct,
+                        pa ? pa.totalStudents : '', pa ? pa.assignedAppointments : '', paRt,
+                        pa ? +(aRt - paRt).toFixed(1) : '']);
+                }
+            } else {
+                advRows.push(['Professional Advisor', 'Advising Office', 'Total Students',
+                    'Assigned Appointments (unduplicated)', 'Assigned Rate',
+                    'Total Appointments (duplicated)', '% Appts w/ Assigned Students']);
+                for (var ai2 = 0; ai2 < advisorData.length; ai2++) {
+                    var a2 = advisorData[ai2];
+                    advRows.push([a2.advisor, a2.office || '', a2.totalStudents,
+                        a2.assignedAppointments, +a2.assignedRate.toFixed(1),
+                        a2.totalAppointments, +a2.assignedPercentage.toFixed(1)]);
+                }
+            }
+            var wsAdv = XLSX.utils.aoa_to_sheet(advRows);
+            XLSX.utils.book_append_sheet(wb, wsAdv, 'By Advisor');
+
+            // --- Advisor Frequency sheet ---
+            var advisorFreq2 = computeAdvisorFrequency(filteredData, filteredAppointmentData, idx, advisorData);
+            var advFreqRows = [['Appointment Frequency by Advisor']];
+            advFreqRows.push(['Advisor', 'Office', 'Total', '0 Appts', '% 0', '1 Appt', '% 1', '2 Appts', '% 2', '3 Appts', '% 3', '4+ Appts', '% 4+']);
+            var afKeys2 = Object.keys(advisorFreq2).filter(function(k){return k !== '_undupTotal';}).sort(function(a,b){
+                var oa = (advisorFreq2[a].office || '').toLowerCase(), ob = (advisorFreq2[b].office || '').toLowerCase();
+                if (oa < ob) return -1; if (oa > ob) return 1;
+                var na = (advisorFreq2[a].name || '').toLowerCase(), nb = (advisorFreq2[b].name || '').toLowerCase();
+                return na.localeCompare(nb);
+            });
+            for (var afi2 = 0; afi2 < afKeys2.length; afi2++) {
+                var afk2 = afKeys2[afi2], afd2 = advisorFreq2[afk2];
+                if (afd2.total === 0) continue;
+                advFreqRows.push([afd2.name || afk2, afd2.office || '', afd2.total,
+                    afd2['0'] || 0, afd2.total ? +((afd2['0'] || 0) / afd2.total * 100).toFixed(1) : 0,
+                    afd2['1'] || 0, afd2.total ? +((afd2['1'] || 0) / afd2.total * 100).toFixed(1) : 0,
+                    afd2['2'] || 0, afd2.total ? +((afd2['2'] || 0) / afd2.total * 100).toFixed(1) : 0,
+                    afd2['3'] || 0, afd2.total ? +((afd2['3'] || 0) / afd2.total * 100).toFixed(1) : 0,
+                    afd2['4+'] || 0, afd2.total ? +((afd2['4+'] || 0) / afd2.total * 100).toFixed(1) : 0]);
+            }
+            var wsAdvFreq = XLSX.utils.aoa_to_sheet(advFreqRows);
+            XLSX.utils.book_append_sheet(wb, wsAdvFreq, 'Frequency');
+
+            var dateParts2 = getCurrentDateParts();
+            XLSX.writeFile(wb, 'Advising_Advisor_Report_' + dateParts2.mm + '.' + dateParts2.dd + '.' + dateParts2.yy + '.xlsx');
+        }
+    } catch (error) {
+        console.error('Error exporting Excel:', error);
+        alert('Failed to export Excel file. Please check console for details.');
+    }
+  }
 
 function exportStudentData() {
     try {
