@@ -3547,6 +3547,7 @@
         var caseloadCols = idxToUse.caseloadCols;
         var apptCols = idxToUse.apptCols;
         var advisingApptsByStudent = idxToUse.advisingApptsByStudent || idxToUse.apptsByStudent;
+        var officeToAdvisors = idxToUse.officeToAdvisors;
 
         var trackedOffices = new Set([
             'ASAP', 'Careers in Engineering', 'College Discovery',
@@ -3563,13 +3564,13 @@
             return String(val).trim();
         }
 
-        // For each student, count appointments with their assigned advisor(s)
+        // For each student, count appointments with their assigned advisor(s) at each specific office
         // Then aggregate by office
         var officeFreq = {}; // officeName -> { office, '0', '1', '2', '3', '4+', total }
 
         // Also track per-student for unduplicated grand total
         var uniqueStudents = new Set();
-        var studentAdvisorApptCount = {}; // sid -> count of appts with any assigned advisor
+        var studentAdvisorApptCount = {}; // sid -> count of appts with any assigned advisor (all offices)
 
         for (var i = 0; i < dataToUse.length; i++) {
             var row = dataToUse[i];
@@ -3578,7 +3579,7 @@
             var offices = parseSemicolonList(row[caseloadCols.office]).map(normalizeOfficeName);
             var staffIds = parseSemicolonList(row[caseloadCols.staffId]);
 
-            // Count appointments with assigned advisor(s) for this student
+            // Build set of ALL assigned staff IDs for this student (for grand total)
             var appts = advisingApptsByStudent.get(sid);
             var assignedStaffSet = new Set();
             for (var si = 0; si < staffIds.length; si++) {
@@ -3586,25 +3587,24 @@
                 if (stId) assignedStaffSet.add(stId);
             }
 
-            var advisorApptCount = 0;
+            // Count ALL assigned advisor appointments (for grand total)
+            var totalAdvisorApptCount = 0;
             if (appts && assignedStaffSet.size > 0) {
                 for (var ai = 0; ai < appts.length; ai++) {
                     var apptStaff = normalizeId(appts[ai][apptCols.staffId]);
-                    if (apptStaff && assignedStaffSet.has(apptStaff)) advisorApptCount++;
+                    if (apptStaff && assignedStaffSet.has(apptStaff)) totalAdvisorApptCount++;
                 }
             }
 
             // Track for unduplicated grand total
             if (!uniqueStudents.has(sid)) {
                 uniqueStudents.add(sid);
-                studentAdvisorApptCount[sid] = advisorApptCount;
+                studentAdvisorApptCount[sid] = totalAdvisorApptCount;
             } else {
-                // Student appears in multiple rows (multi-office) - take the max count
-                // Actually the count is the same regardless of row since we check all assigned staff
-                studentAdvisorApptCount[sid] = advisorApptCount;
+                studentAdvisorApptCount[sid] = totalAdvisorApptCount;
             }
 
-            // Assign to each office this student belongs to (deduplicate same office)
+            // Per-office: count only appointments with assigned advisors who work at THAT office
             var seenOfficesForFreq = new Set();
             for (var oi = 0; oi < offices.length; oi++) {
                 var thisOffice = offices[oi];
@@ -3613,10 +3613,23 @@
                 seenOfficesForFreq.add(thisOffice);
                 if (!officeFreq[thisOffice]) officeFreq[thisOffice] = { office: thisOffice, '0': 0, '1': 0, '2': 0, '3': 0, '4+': 0, total: 0 };
                 officeFreq[thisOffice].total++;
-                if (advisorApptCount === 0) officeFreq[thisOffice]['0']++;
-                else if (advisorApptCount === 1) officeFreq[thisOffice]['1']++;
-                else if (advisorApptCount === 2) officeFreq[thisOffice]['2']++;
-                else if (advisorApptCount === 3) officeFreq[thisOffice]['3']++;
+
+                // Count appointments only with assigned advisors at THIS office
+                var advisorsAtThisOffice = officeToAdvisors.get(thisOffice);
+                var officeAdvisorApptCount = 0;
+                if (appts && advisorsAtThisOffice && assignedStaffSet.size > 0) {
+                    for (var ai2 = 0; ai2 < appts.length; ai2++) {
+                        var apptStaff2 = normalizeId(appts[ai2][apptCols.staffId]);
+                        if (apptStaff2 && assignedStaffSet.has(apptStaff2) && advisorsAtThisOffice.has(apptStaff2)) {
+                            officeAdvisorApptCount++;
+                        }
+                    }
+                }
+
+                if (officeAdvisorApptCount === 0) officeFreq[thisOffice]['0']++;
+                else if (officeAdvisorApptCount === 1) officeFreq[thisOffice]['1']++;
+                else if (officeAdvisorApptCount === 2) officeFreq[thisOffice]['2']++;
+                else if (officeAdvisorApptCount === 3) officeFreq[thisOffice]['3']++;
                 else officeFreq[thisOffice]['4+']++;
             }
         }
