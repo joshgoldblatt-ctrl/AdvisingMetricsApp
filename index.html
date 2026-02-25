@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 7.0</title>
+    <title>LaGuardia Advising Metrics App - Version 7.1b</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -896,7 +896,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 7.0 - Released February 20, 2026</div>
+            <div class="subtitle">Version 7.1 - Released February 25, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -6461,6 +6461,8 @@
                 if (prevContAdvCounts) advHeader.push('Cont Diff');
                 advHeader = advHeader.concat(['Total Students', 'Total Assigned Appts', 'Total Rate']);
                 if (hasPrev && prevAdvisorMap2) advHeader.push('Total Diff');
+                advHeader.push('Total Appointments');
+                if (hasPrev && prevAdvisorMap2) advHeader.push('Total Appts Diff');
                 advRows.push(advHeader);
 
                 for (var ai = 0; ai < advisorData.length; ai++) {
@@ -6489,6 +6491,12 @@
                         var paRate = pa ? +pa.assignedRate.toFixed(1) : 0;
                         advRow.push(+(tRate - paRate).toFixed(1));
                     }
+                    advRow.push(a.totalAppointments || 0);
+                    if (hasPrev && prevAdvisorMap2) {
+                        var pa2 = prevAdvisorMap2[a.staffId];
+                        var prevTotalAppts = pa2 ? (pa2.totalAppointments || 0) : 0;
+                        advRow.push((a.totalAppointments || 0) - prevTotalAppts);
+                    }
                     advRows.push(advRow);
                 }
             } else if (hasPrev && prevAdvisorMap2) {
@@ -6496,7 +6504,8 @@
                     'Current Students', 'Assigned Appointments', 'Assigned Rate',
                     'Total Appointments (duplicated)', '% Appts w/ Assigned Students',
                     prevLbl + ' Students', prevLbl + ' Assigned Appointments', prevLbl + ' Assigned Rate',
-                    'Assigned Rate Diff']);
+                    'Assigned Rate Diff',
+                    prevLbl + ' Total Appointments', 'Total Appts Diff']);
                 for (var ai = 0; ai < advisorData.length; ai++) {
                     var a = advisorData[ai];
                     var aRt = +a.assignedRate.toFixed(1);
@@ -6506,7 +6515,8 @@
                     advRows.push([a.advisor, a.office || '', a.totalStudents, a.assignedAppointments, aRt,
                         a.totalAppointments, aPct,
                         pa ? pa.totalStudents : '', pa ? pa.assignedAppointments : '', paRt,
-                        pa ? +(aRt - paRt).toFixed(1) : '']);
+                        pa ? +(aRt - paRt).toFixed(1) : '',
+                        pa ? pa.totalAppointments : '', pa ? (a.totalAppointments - pa.totalAppointments) : '']);
                 }
             } else {
                 advRows.push(['Professional Advisor', 'Advising Office', 'Total Students',
