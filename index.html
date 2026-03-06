@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 7.1b</title>
+    <title>LaGuardia Advising Metrics App - Version 7.2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -896,8 +896,65 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 7.1b - Released February 25, 2026</div>
+            <div class="subtitle">Version 7.2 - Released March 6, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
+        </div>
+
+        <!-- Methodology Dropdown -->
+        <div style="margin-bottom: 20px;">
+            <button onclick="document.getElementById('methodology-panel').style.display = document.getElementById('methodology-panel').style.display === 'none' ? 'block' : 'none'; this.querySelector('.arrow').textContent = document.getElementById('methodology-panel').style.display === 'none' ? '▶' : '▼';" style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; text-align: left; display: flex; align-items: center; gap: 10px;">
+                <span class="arrow">▶</span> 📖 How Calculations Work
+            </button>
+            <div id="methodology-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
+
+                <h3 style="color: #667eea; margin: 0 0 15px 0; font-size: 18px;">Calculation Methodology</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Student Type Grouping</h4>
+                <p style="margin: 0 0 8px 0;">Students are grouped into two main categories for breakout analysis:</p>
+                <p style="margin: 0 0 4px 0;"><strong>New</strong> — Includes students with a Student Type of "New" or "Transfer"</p>
+                <p style="margin: 0 0 4px 0;"><strong>Continuing</strong> — Includes students with a Student Type of "Continuing" or "Readmit"</p>
+                <p style="margin: 0 0 8px 0;"><strong>Not Found</strong> — Shown as its own category in the overview but not included in the New or Continuing groups</p>
+                <p style="margin: 0 0 8px 0;">All students, regardless of Student Type, are included in overall/total calculations.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Multi-Office &amp; Multi-Advisor Students</h4>
+                <p style="margin: 0 0 8px 0;">Some students are assigned to more than one advising office or more than one advisor. In the per-office view, these students are counted in <strong>every office</strong> they are assigned to. For example, a student assigned to both ASAP and College Discovery will appear as +1 student in each office's row.</p>
+                <p style="margin: 0 0 8px 0;">Similarly, in the per-advisor view, if a student is assigned to two advisors, they are counted toward both advisors' caseloads.</p>
+                <p style="margin: 0 0 8px 0;">When two advisors are assigned from the same office (e.g., two ISS advisors), the student is only counted once for that office, not twice.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Assigned Advisor Rate (Per Office)</h4>
+                <p style="margin: 0 0 8px 0;">For each office: of all students assigned to that office, what percentage met with at least one of their assigned advisors <strong>who belongs to that office</strong>. The check uses the <code>officeToAdvisors</code> mapping — it verifies that the advisor the student met is both (a) assigned to the student and (b) associated with that specific office. Each student is counted only once per office regardless of how many appointments they had.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Office Appointment Rate (Per Office)</h4>
+                <p style="margin: 0 0 8px 0;">For each office: of all students assigned to that office, what percentage had at least one appointment <strong>at that office location</strong>. This checks the appointment's Location field, not the advisor. So if a student met their ISS advisor at a different location (e.g., Student Advising Services), it would count for the assigned advisor rate but <strong>not</strong> the office appointment rate.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Any Advisor from Office Rate</h4>
+                <p style="margin: 0 0 8px 0;">For each office: of all students assigned to that office, what percentage met with <strong>any advisor</strong> from that office — not necessarily their specific assigned advisor. This captures cases where a student saw a colleague of their assigned advisor within the same office.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Advisor-Level Metrics (By Advisor View &amp; Export)</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Total Students</strong> — Number of students assigned to this advisor on the caseload</p>
+                <p style="margin: 0 0 4px 0;"><strong>Assigned Appointments (unduplicated)</strong> — Number of unique assigned students who had at least one advising appointment with this advisor (each student counted once, even if they visited multiple times)</p>
+                <p style="margin: 0 0 4px 0;"><strong>Assigned Rate</strong> — Assigned Appointments ÷ Total Students × 100</p>
+                <p style="margin: 0 0 4px 0;"><strong>Total Appointments (duplicated)</strong> — Raw count of all advising appointments conducted by this advisor, counting every visit including repeat visits from the same student</p>
+                <p style="margin: 0 0 4px 0;"><strong>Total Appts w/ Assigned</strong> — Of the total appointments, how many were with students who are assigned to this advisor (duplicated — counts every visit)</p>
+                <p style="margin: 0 0 8px 0;"><strong>% Appts w/ Assigned Students</strong> — Total Appts w/ Assigned ÷ Total Appointments × 100</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Appointment Frequency Distribution</h4>
+                <p style="margin: 0 0 8px 0;">For each advisor or office, shows the distribution of how many advising appointments each assigned student had: 0 appointments, 1 appointment, 2 appointments, 3 appointments, or 4+ appointments. Percentages are calculated against the total number of assigned students for that advisor or office.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Service Filtering</h4>
+                <p style="margin: 0 0 8px 0;">The app distinguishes between true advising services and other services (e.g., administrative tasks, workshops). Only appointments matching the configured advising services are counted toward advising metrics. Non-advising services are excluded from all rate calculations. The service filter can be configured in the Advising Services Configuration section.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Grand Total Rows</h4>
+                <p style="margin: 0 0 8px 0;"><strong>Important:</strong> Grand total rows are calculated differently than per-office or per-advisor rows.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Office view — "GRAND TOTAL (Unduplicated)":</strong> The grand total uses a <strong>deduplicated</strong> count of all students. A student assigned to two offices (e.g., ASAP and College Discovery) is counted only <strong>once</strong> in the grand total, even though they appear in both office rows above. The assigned advisor rate in the grand total asks: of all unique students, what % met any of their assigned advisors anywhere? The office appointment rate asks: of all unique students, what % had an appointment at any of their assigned offices? Because of this deduplication, <strong>the grand total will not equal the sum of the per-office rows</strong> — this is expected behavior.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Advisor view:</strong> There is no grand total row in the advisor view or export, because students can be assigned to multiple advisors, making a simple sum misleading.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Frequency tables — "TOTAL (Unduplicated)":</strong> The total row deduplicates students across all advisors or offices. A student shared between two advisors is counted once in the total, categorized by their total number of appointments with any advisor in that group.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Student Type / Credit / GPA totals:</strong> These TOTAL rows are additive sums of the per-category counts above them. Since students belong to only one Student Type, credit range, or GPA range, there is no duplication concern and the total equals the sum of the rows.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Comparison / Difference Columns</h4>
+                <p style="margin: 0 0 8px 0;">When a previous semester's data is loaded, "Diff" columns show the change from the prior semester to the current semester. For rate columns, this is the percentage point difference (current rate minus prior rate). For count columns (e.g., Total Appointments), this is the raw count difference. A positive number means an increase from the prior semester.</p>
+
+            </div>
         </div>
 
         <div class="upload-section">
@@ -2100,7 +2157,7 @@
         if (!studentTypeVal) return null;
         var val = String(studentTypeVal).trim();
         if (val === 'New' || val === 'Transfer') return 'New';
-        if (val === 'Continuing' || val === 'Readmit' || val === 'Not Found') return 'Continuing';
+        if (val === 'Continuing' || val === 'Readmit') return 'Continuing';
         return null;
     }
 
@@ -3373,6 +3430,7 @@
                 assignedAppointments: stats.assignedAppointments,
                 assignedRate: assignedRateNum,          // store as number for sorting
                 totalAppointments: stats.totalAppointments,
+                assignedAppointmentsDuplicated: stats.assignedAppointmentsDuplicated,
                 assignedPercentage: assignedPctNum      // store as number for sorting
             });
         });
@@ -3458,7 +3516,7 @@
                 });
                 var rate = total > 0 ? (assigned / total) * 100 : 0;
                 var assignedPct = totalAppts > 0 ? (assignedAppts / totalAppts) * 100 : 0;
-                prevAdvisorMap[staffId] = { totalStudents: total, assignedAppointments: assigned, assignedRate: rate, totalAppointments: totalAppts, assignedPercentage: assignedPct, name: prevStaffNames[staffId] || staffId, office: prevStaffOffices[staffId] || 'Unknown' };
+                prevAdvisorMap[staffId] = { totalStudents: total, assignedAppointments: assigned, assignedRate: rate, totalAppointments: totalAppts, assignedAppointmentsDuplicated: assignedAppts, assignedPercentage: assignedPct, name: prevStaffNames[staffId] || staffId, office: prevStaffOffices[staffId] || 'Unknown' };
             });
         }
         var prevLabelAdv = hasPrevSemester() ? getPrevSemesterLabel() : '';
@@ -6462,7 +6520,11 @@
                 advHeader = advHeader.concat(['Total Students', 'Total Assigned Appts', 'Total Rate']);
                 if (hasPrev && prevAdvisorMap2) advHeader.push('Total Diff');
                 advHeader.push('Total Appointments');
-                if (hasPrev && prevAdvisorMap2) advHeader.push('Total Appts Diff');
+                advHeader.push('Total Appts w/ Assigned');
+                if (hasPrev && prevAdvisorMap2) {
+                    advHeader.push('Total Appts Diff');
+                    advHeader.push('Appts w/ Assigned Diff');
+                }
                 advRows.push(advHeader);
 
                 for (var ai = 0; ai < advisorData.length; ai++) {
@@ -6492,20 +6554,23 @@
                         advRow.push(+(tRate - paRate).toFixed(1));
                     }
                     advRow.push(a.totalAppointments || 0);
+                    advRow.push(a.assignedAppointmentsDuplicated || 0);
                     if (hasPrev && prevAdvisorMap2) {
                         var pa2 = prevAdvisorMap2[a.staffId];
                         var prevTotalAppts = pa2 ? (pa2.totalAppointments || 0) : 0;
+                        var prevAssignedApptsDup = pa2 ? (pa2.assignedAppointmentsDuplicated || 0) : 0;
                         advRow.push((a.totalAppointments || 0) - prevTotalAppts);
+                        advRow.push((a.assignedAppointmentsDuplicated || 0) - prevAssignedApptsDup);
                     }
                     advRows.push(advRow);
                 }
             } else if (hasPrev && prevAdvisorMap2) {
                 advRows.push(['Professional Advisor', 'Advising Office',
                     'Current Students', 'Assigned Appointments', 'Assigned Rate',
-                    'Total Appointments (duplicated)', '% Appts w/ Assigned Students',
+                    'Total Appointments (duplicated)', 'Total Appts w/ Assigned', '% Appts w/ Assigned Students',
                     prevLbl + ' Students', prevLbl + ' Assigned Appointments', prevLbl + ' Assigned Rate',
                     'Assigned Rate Diff',
-                    prevLbl + ' Total Appointments', 'Total Appts Diff']);
+                    prevLbl + ' Total Appointments', prevLbl + ' Appts w/ Assigned', 'Total Appts Diff', 'Appts w/ Assigned Diff']);
                 for (var ai = 0; ai < advisorData.length; ai++) {
                     var a = advisorData[ai];
                     var aRt = +a.assignedRate.toFixed(1);
@@ -6513,20 +6578,22 @@
                     var pa = prevAdvisorMap2[a.staffId] || null;
                     var paRt = pa ? +pa.assignedRate.toFixed(1) : '';
                     advRows.push([a.advisor, a.office || '', a.totalStudents, a.assignedAppointments, aRt,
-                        a.totalAppointments, aPct,
+                        a.totalAppointments, a.assignedAppointmentsDuplicated || 0, aPct,
                         pa ? pa.totalStudents : '', pa ? pa.assignedAppointments : '', paRt,
                         pa ? +(aRt - paRt).toFixed(1) : '',
-                        pa ? pa.totalAppointments : '', pa ? (a.totalAppointments - pa.totalAppointments) : '']);
+                        pa ? pa.totalAppointments : '', pa ? (pa.assignedAppointmentsDuplicated || 0) : '',
+                        pa ? (a.totalAppointments - pa.totalAppointments) : '',
+                        pa ? ((a.assignedAppointmentsDuplicated || 0) - (pa.assignedAppointmentsDuplicated || 0)) : '']);
                 }
             } else {
                 advRows.push(['Professional Advisor', 'Advising Office', 'Total Students',
                     'Assigned Appointments (unduplicated)', 'Assigned Rate',
-                    'Total Appointments (duplicated)', '% Appts w/ Assigned Students']);
+                    'Total Appointments (duplicated)', 'Total Appts w/ Assigned', '% Appts w/ Assigned Students']);
                 for (var ai2 = 0; ai2 < advisorData.length; ai2++) {
                     var a2 = advisorData[ai2];
                     advRows.push([a2.advisor, a2.office || '', a2.totalStudents,
                         a2.assignedAppointments, +a2.assignedRate.toFixed(1),
-                        a2.totalAppointments, +a2.assignedPercentage.toFixed(1)]);
+                        a2.totalAppointments, a2.assignedAppointmentsDuplicated || 0, +a2.assignedPercentage.toFixed(1)]);
                 }
             }
             var wsAdv = XLSX.utils.aoa_to_sheet(advRows);
