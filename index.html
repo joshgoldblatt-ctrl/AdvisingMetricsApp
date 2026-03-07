@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 7.2</title>
+    <title>LaGuardia Advising Metrics App - Version 7.3</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -896,8 +896,67 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 7.2 - Released March 6, 2026</div>
+            <div class="subtitle">Version 7.3 - Released March 6, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
+        </div>
+
+        <!-- Update History Dropdown -->
+        <div style="margin-bottom: 10px;">
+            <button onclick="document.getElementById('update-history-panel').style.display = document.getElementById('update-history-panel').style.display === 'none' ? 'block' : 'none'; this.querySelector('.arrow').textContent = document.getElementById('update-history-panel').style.display === 'none' ? '▶' : '▼';" style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; text-align: left; display: flex; align-items: center; gap: 10px;">
+                <span class="arrow">▶</span> 📋 Update History
+            </button>
+            <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
+
+                <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.3 — March 6, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>By Date tab</strong> — New tab with weekly appointment analysis. Bar chart and cumulative table showing first appointments by week (unique students having their first appointment at each assigned office). Separate total volume table showing raw weekly appointment counts. Office breakout toggle for both tables and chart. Comparison overlay when prior semester data is loaded.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Cumulative first appointments</strong> — Table shows running cumulative count and percentage of total assigned students reached, per office and overall. First appointments are attributed to the student's assigned office based on appointment location, using advising-filtered appointments only.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Student Type filter</strong> — New multi-select filter in Data Filters allowing filtering by individual Student Type values (New, Transfer, Continuing, Readmit, Not Found). Recalculates the entire analysis when applied.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Students by Office and Student Type table</strong> — New table in the Overview tab showing student counts per office broken out by Student Type, with a deduplicated grand total row.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Weekly Excel export</strong> — Standalone export with First Appointments sheet (per-week count, cumulative, cumulative % columns per office) and Total Volume sheet.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.2 — March 6, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Student Type grouping fix</strong> — "Not Found" students are no longer grouped with Continuing. They appear as their own row in the Overview but are excluded from New and Continuing breakouts. Still included in all overall totals.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Advisor export: Total Appts w/ Assigned column</strong> — New column showing how many of an advisor's total appointments were with students assigned to them (duplicated count). Includes diff column when comparison data is loaded. Added across all three export paths.</p>
+                <p style="margin: 0 0 8px 0;"><strong>How Calculations Work dropdown</strong> — New collapsible section explaining all calculation methodology including grand total deduplication, multi-office handling, and metric definitions.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.1 — February 25, 2026</h4>
+                <p style="margin: 0 0 8px 0;"><strong>Advisor export: Total Appointments column</strong> — Added raw total appointment count per advisor to the By Advisor export sheet. Includes diff column when comparison data is loaded. Added across all three export paths (student type breakout, comparison, and plain).</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.0 — February 20, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Student Type analysis</strong> — New grouping system: New (New + Transfer), Continuing (Continuing + Readmit + Not Found). Grouped bar charts in By Office, By Advisor, and frequency sections showing All/New/Continuing breakouts.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Interface restructure</strong> — Charts emphasized over tables. Main office and advisor rate tables removed from in-app display (preserved in exports). Frequency tables removed from in-app (preserved in exports).</p>
+                <p style="margin: 0 0 4px 0;"><strong>Overview enhancements</strong> — Credits and GPA tables now show both Assigned Advisor Rate and Office Appointment Rate. New Analysis by Student Type section.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Export enhancements</strong> — By Office and By Advisor sheets include New/Continuing/Total columns with diff columns. Frequency sheets include student type row breakouts. New By Department and By Major sheets.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 6.5 — February 19, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Duplicate office deduplication</strong> — Seven fixes across the app for students with the same office listed multiple times (e.g., two advisors at the same office). Prevents double-counting in office stats, frequency tables, multi-office breakdowns, and shared/unique classification.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Veterans Services alias</strong> — Added caseload-side normalization for "Veterans Services" → "Veteran Services" to match appointment location naming.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 6.4 — February 18, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Comparison data redesign</strong> — Prior semester comparison moved from tables to charts. All bar charts now show a thinner gray comparison bar with change badges (e.g., "+1.2pp"). Comparison data removed from office and advisor tables.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Advisor chart improvements</strong> — Shows union of current and previous semester advisors. Prior-only advisors show gray bars; current-only advisors show no prior bar. Prior advisor names resolved from prior caseload data.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 6.3 — February 18, 2026</h4>
+                <p style="margin: 0 0 8px 0;"><strong>Advisor rate chart</strong> — New horizontal bar chart showing Assigned Advisor Rate per advisor, grouped by office with color-coded bars based on rate thresholds. Advisor table made collapsible.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 6.1 — February 17, 2026</h4>
+                <p style="margin: 0 0 8px 0;"><strong>Office name aliasing</strong> — Centralized office name normalization system using officeNameAliases. Added "CUNY 2X Tech Academy" → "CUNY 2X Tech Computer Science" mapping across all caseload and appointment processing.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 6.0 — February 9, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Semester comparison</strong> — New previous semester upload area with caseload and appointment inputs. FA/SP semester label selectors. Comparison badges and prior values across all scorecards and tables.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Appointment frequency</strong> — New sections in By Office and By Advisor tabs showing distribution of 0/1/2/3/4+ appointments per student with stacked bar charts and tables.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Student data export</strong> — Added appointment count columns: # Appts with Assigned Advisor, # Appts within Assigned Office, # Total Appointments.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 5.0 — February 6, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Appointment Metrics tab</strong> — New tab with scorecards for self-booked appointments, appointments by location, and service type breakdowns.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Multi-office filter improvements</strong> — Semicolon-separated office parsing for filter logic.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Versions 4.0–4.8 — January–February 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Core features built</strong> — Multi-office and multi-advisor student handling. Three-tier tracking (Assigned Advisor, Any Advisor from Office, Office Appointment). Advising services configuration. Data filters (Office, Advisor, Major, Services, Meeting Type, Appointment Type). Excel exports for office and advisor reports. Student data CSV export. Progress bar for large datasets. Reported Services tab. By Major tab. Multi-office scorecard and breakdown.</p>
+
+            </div>
         </div>
 
         <!-- Methodology Dropdown -->
@@ -953,6 +1012,14 @@
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Comparison / Difference Columns</h4>
                 <p style="margin: 0 0 8px 0;">When a previous semester's data is loaded, "Diff" columns show the change from the prior semester to the current semester. For rate columns, this is the percentage point difference (current rate minus prior rate). For count columns (e.g., Total Appointments), this is the raw count difference. A positive number means an increase from the prior semester.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Weekly Appointment Data (By Date)</h4>
+                <p style="margin: 0 0 8px 0;">The By Date tab groups all appointments by week, with weeks starting on Monday and labeled by the Monday date (e.g., "Week of 2/3/25"). This uses all filtered appointments — if you apply filters (office, service, student type, etc.), the weekly counts will recalculate to reflect only matching appointments. The office breakout toggle shows a stacked bar chart and per-office columns in the tables. When comparison data is loaded, prior semester weeks are shown side by side. The weekly export includes both tables with office-level breakout columns.</p>
+                <p style="margin: 0 0 8px 0;"><strong>First Appointments by Week:</strong> Counts unique students having their first appointment each week. Each student is counted only once, in the week of their earliest appointment. If a student's first appointment is on 9/3, they count toward the "Week of 9/1" row and do not appear in any subsequent week. The chart visualizes this data.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Total Appointment Volume by Week:</strong> Counts all appointments each week, including repeat visits from the same student. This is a raw volume count.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Data Filters</h4>
+                <p style="margin: 0 0 8px 0;">Filters allow you to narrow the analysis to specific subsets of students or appointments. All filters are multi-select — you can pick any combination of values. When applied, the entire analysis recalculates using only the matching data. The <strong>Student Type</strong> filter operates on the caseload data and filters students by their individual Student Type value (New, Transfer, Continuing, Readmit, Not Found). This is different from the Student Type grouping used in breakout charts, which combines types into groups.</p>
 
             </div>
         </div>
@@ -1061,6 +1128,7 @@
                     <button class="tab-button active" onclick="showTab('overview')">Overview</button>
                     <button class="tab-button" onclick="showTab('by-office')">By Office</button>
                     <button class="tab-button" onclick="showTab('by-advisor')">By Advisor</button>
+                    <button class="tab-button" onclick="showTab('by-date')">By Date</button>
                     <button class="tab-button" onclick="showTab('by-major')">By Major</button>
                     <button class="tab-button" onclick="showTab('appointment-metrics')">Appointment Metrics</button>
                     <button class="tab-button" onclick="showTab('services')">Reported Services</button>
@@ -1093,6 +1161,16 @@
                     <div id="advisor-content">
                         <div class="placeholder-message">
                             Upload both files and click "Run Analysis" to see advisor analysis
+                        </div>
+                    </div>
+                </div>
+
+                <div id="by-date-tab" class="tab-content">
+                    <h3>Analysis by Date</h3>
+                    <button class="export-pdf-button" onclick="exportDateExcel()">Export to Excel</button>
+                    <div id="date-content">
+                        <div class="placeholder-message">
+                            Upload both files and click "Run Analysis" to see weekly appointment data
                         </div>
                     </div>
                 </div>
@@ -1156,6 +1234,10 @@
                         <div>
                             <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #495057;">Appointment Type</label>
                             <div id="appointment-type-filter" class="multiselect-container"></div>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #495057;">Student Type</label>
+                            <div id="student-type-filter" class="multiselect-container"></div>
                         </div>
                     </div>
                     <button class="filters-clear-button" onclick="clearAllFilters()" style="margin-top: 15px;">Clear All Filters</button>
@@ -1369,6 +1451,7 @@
             case 'reported-services-filter': return 'Services';
             case 'meeting-type-filter': return 'Meeting Types';
             case 'appointment-type-filter': return 'Appointment Types';
+            case 'student-type-filter': return 'Student Types';
             default: return 'Options';
         }
     }
@@ -1570,6 +1653,7 @@
         multiselectInstances['reported-services-filter'] = createMultiselect('reported-services-filter', []);
         multiselectInstances['meeting-type-filter'] = createMultiselect('meeting-type-filter', []);
         multiselectInstances['appointment-type-filter'] = createMultiselect('appointment-type-filter', []);
+        multiselectInstances['student-type-filter'] = createMultiselect('student-type-filter', []);
         console.log('Filters initialized:', multiselectInstances);
     }
 
@@ -2149,6 +2233,10 @@
         var studentTypeColumns = ['Student Type', 'Student_Type', 'StudentType'];
         mappings.studentType = findColumn(keys, studentTypeColumns);
 
+        // Date
+        var dateColumns = ['Reported Start Date', 'Start Date', 'Date', 'Appointment Date', 'Schedule Date'];
+        mappings.date = findColumn(keys, dateColumns);
+
         return mappings;
     }
 
@@ -2206,6 +2294,12 @@
         if (majorColumn) {
             var majors = getUniqueValues(caseloadData, majorColumn);
             updateMultiselectOptionsData(multiselectInstances['major-filter'], majors);
+        }
+
+        // Student Type filter
+        if (caseloadCols.studentType) {
+            var studentTypes = getUniqueValues(caseloadData, caseloadCols.studentType);
+            updateMultiselectOptionsData(multiselectInstances['student-type-filter'], studentTypes);
         }
     }
 
@@ -2267,6 +2361,7 @@
             var reportedServicesFilter = Array.from(multiselectInstances['reported-services-filter'].selectedValues);
             var meetingTypeFilter = Array.from(multiselectInstances['meeting-type-filter'].selectedValues);
             var appointmentTypeFilter = Array.from(multiselectInstances['appointment-type-filter'].selectedValues);
+            var studentTypeFilter = Array.from(multiselectInstances['student-type-filter'].selectedValues);
 
             // Filter appointments
             updateProgress(60, 'Filtering appointment data...');
@@ -2376,6 +2471,12 @@
                         }
                         
                         if (majorFilter.length > 0 && majorColumn && !majorFilter.includes(row[majorColumn])) include = false;
+                        
+                        // Student Type filter
+                        if (studentTypeFilter.length > 0 && caseloadCols.studentType) {
+                            var stVal = String(row[caseloadCols.studentType] || '').trim();
+                            if (!studentTypeFilter.includes(stVal)) include = false;
+                        }
                         
                         if (include) filteredData.push(row);
                     }
@@ -2701,16 +2802,20 @@
                 updateProgress(92, 'Updating advisor analysis...');
                 setTimeout(function() {
                     updateAdvisorTab();
-                    updateProgress(94, 'Updating major analysis...');
+                    updateProgress(93, 'Updating date analysis...');
                     setTimeout(function() {
-                        updateMajorTab();
-                        updateProgress(96, 'Updating appointment metrics...');
+                        updateDateTab();
+                        updateProgress(94, 'Updating major analysis...');
                         setTimeout(function() {
-                            updateAppointmentMetricsTab();
-                            updateProgress(98, 'Updating services...');
+                            updateMajorTab();
+                            updateProgress(96, 'Updating appointment metrics...');
                             setTimeout(function() {
-                                updateServicesTab();
-                                if (callback) callback();
+                                updateAppointmentMetricsTab();
+                                updateProgress(98, 'Updating services...');
+                                setTimeout(function() {
+                                    updateServicesTab();
+                                    if (callback) callback();
+                                }, 10);
                             }, 10);
                         }, 10);
                     }, 10);
@@ -2735,6 +2840,85 @@
         if (hasPrevSemester() && prevFilteredData && prevFilteredData.length > 0 && prevIdx) {
             prevCreditsAnalytics = calculateCreditsAnalytics(prevFilteredData, prevIdx);
             prevGpaAnalytics = calculateGpaAnalytics(prevFilteredData, prevIdx);
+        }
+
+        // Office Student Type Distribution table
+        var caseloadCols2 = idx.caseloadCols;
+        if (caseloadCols2.studentType) {
+            var stDistTrackedOffices = new Set([
+                'ASAP', 'Careers in Engineering', 'College Discovery',
+                'CUNY 2X Tech Computer Science', 'International Student Services',
+                'Student Advising Services', 'Veteran Services'
+            ]);
+            var stTypes = ['New', 'Transfer', 'Continuing', 'Readmit', 'Not Found'];
+            var officeSTDist = {}; // office -> { New: n, Transfer: n, ... Total: n }
+            var grandSTDist = {}; // student type -> count (deduplicated)
+            var grandUnique = new Set();
+            for (var sti2 = 0; sti2 < stTypes.length; sti2++) grandSTDist[stTypes[sti2]] = new Set();
+
+            for (var di = 0; di < filteredData.length; di++) {
+                var dRow = filteredData[di];
+                var dSid = String(dRow[caseloadCols2.studentId] || '').trim();
+                var dST = String(dRow[caseloadCols2.studentType] || '').trim();
+                var dOffices = String(dRow[caseloadCols2.office] || '').split(';').map(function(o){return normalizeOfficeName(o.trim());}).filter(function(o){return o.length > 0;});
+
+                // Grand total dedup
+                if (dSid && !grandUnique.has(dSid)) {
+                    grandUnique.add(dSid);
+                    if (grandSTDist[dST]) grandSTDist[dST].add(dSid);
+                }
+
+                var seenOffice = new Set();
+                for (var doi = 0; doi < dOffices.length; doi++) {
+                    var dOff = dOffices[doi];
+                    if (!stDistTrackedOffices.has(dOff)) continue;
+                    if (seenOffice.has(dOff)) continue;
+                    seenOffice.add(dOff);
+                    if (!officeSTDist[dOff]) {
+                        officeSTDist[dOff] = {};
+                        for (var stj = 0; stj < stTypes.length; stj++) officeSTDist[dOff][stTypes[stj]] = 0;
+                        officeSTDist[dOff]['Total'] = 0;
+                    }
+                    if (officeSTDist[dOff][dST] !== undefined) officeSTDist[dOff][dST]++;
+                    officeSTDist[dOff]['Total']++;
+                }
+            }
+
+            var officeSTKeys = Object.keys(officeSTDist).sort();
+            if (officeSTKeys.length > 0) {
+                overviewHTML += '<h4 style="margin-top: 20px; margin-bottom: 10px; color: #2c3e50;">📋 Students by Office and Student Type</h4>';
+                overviewHTML += '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+                overviewHTML += '<thead><tr style="background: #f8f9fa;">';
+                overviewHTML += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Advising Office</th>';
+                for (var shi = 0; shi < stTypes.length; shi++) {
+                    overviewHTML += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">' + stTypes[shi] + '</th>';
+                }
+                overviewHTML += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Total</th>';
+                overviewHTML += '</tr></thead><tbody>';
+
+                for (var oki = 0; oki < officeSTKeys.length; oki++) {
+                    var oKey = officeSTKeys[oki];
+                    var oST = officeSTDist[oKey];
+                    overviewHTML += '<tr style="border-bottom: 1px solid #e9ecef;">';
+                    overviewHTML += '<td style="padding: 8px 10px; font-weight: 500;">' + oKey + '</td>';
+                    for (var stci = 0; stci < stTypes.length; stci++) {
+                        overviewHTML += '<td style="padding: 8px 10px; text-align: center;">' + (oST[stTypes[stci]] || 0) + '</td>';
+                    }
+                    overviewHTML += '<td style="padding: 8px 10px; text-align: center; font-weight: 600;">' + oST['Total'] + '</td>';
+                    overviewHTML += '</tr>';
+                }
+
+                // Grand total row (deduplicated)
+                overviewHTML += '<tr style="background: #f8f9fa; border-top: 2px solid #dee2e6; font-weight: 700;">';
+                overviewHTML += '<td style="padding: 10px;">GRAND TOTAL (Unduplicated)</td>';
+                for (var gsti = 0; gsti < stTypes.length; gsti++) {
+                    overviewHTML += '<td style="padding: 10px; text-align: center;">' + grandSTDist[stTypes[gsti]].size + '</td>';
+                }
+                overviewHTML += '<td style="padding: 10px; text-align: center;">' + grandUnique.size + '</td>';
+                overviewHTML += '</tr>';
+
+                overviewHTML += '</tbody></table></div>';
+            }
         }
 
         // Analysis by Earned Credits
@@ -5988,6 +6172,735 @@
     }
 }
 
+
+    // ===== By Date Tab =====
+    var _dateWeeklyData = null;
+    var _datePrevWeeklyData = null;
+    var _dateFirstApptData = null;
+    var _datePrevFirstApptData = null;
+    var _dateOfficeBreakout = false;
+
+    function parseApptDate(dateStr) {
+        if (!dateStr) return null;
+        var s = String(dateStr).trim();
+        // Handle M/D/YYYY or MM/DD/YYYY
+        var parts = s.split('/');
+        if (parts.length === 3) {
+            var m = parseInt(parts[0], 10) - 1;
+            var d = parseInt(parts[1], 10);
+            var y = parseInt(parts[2], 10);
+            if (y < 100) y += 2000;
+            var dt = new Date(y, m, d);
+            if (!isNaN(dt.getTime())) return dt;
+        }
+        // Fallback: try Date.parse
+        var dt2 = new Date(s);
+        if (!isNaN(dt2.getTime())) return dt2;
+        return null;
+    }
+
+    function getMonday(d) {
+        var dt = new Date(d.getTime());
+        var day = dt.getDay();
+        var diff = day === 0 ? -6 : 1 - day; // Monday = 1
+        dt.setDate(dt.getDate() + diff);
+        dt.setHours(0, 0, 0, 0);
+        return dt;
+    }
+
+    function formatWeekLabel(mondayDate) {
+        var m = mondayDate.getMonth() + 1;
+        var d = mondayDate.getDate();
+        var y = String(mondayDate.getFullYear()).slice(-2);
+        return 'Week of ' + m + '/' + d + '/' + y;
+    }
+
+    function buildWeeklyData(apptData, dateCol, officeCol) {
+        var weekMap = {}; // mondayStr -> { total, offices: { officeName: count } }
+        var officeSet = new Set();
+
+        for (var i = 0; i < apptData.length; i++) {
+            var appt = apptData[i];
+            var dt = parseApptDate(appt[dateCol]);
+            if (!dt) continue;
+            var monday = getMonday(dt);
+            var key = monday.toISOString().slice(0, 10);
+            if (!weekMap[key]) weekMap[key] = { monday: monday, total: 0, offices: {} };
+            weekMap[key].total++;
+
+            if (officeCol) {
+                var office = String(appt[officeCol] || 'Unknown').trim();
+                if (!weekMap[key].offices[office]) weekMap[key].offices[office] = 0;
+                weekMap[key].offices[office]++;
+                officeSet.add(office);
+            }
+        }
+
+        // Sort by date
+        var sortedKeys = Object.keys(weekMap).sort();
+        var weeks = [];
+        for (var si = 0; si < sortedKeys.length; si++) {
+            weeks.push(weekMap[sortedKeys[si]]);
+        }
+        return { weeks: weeks, offices: Array.from(officeSet).sort() };
+    }
+
+    function buildFirstApptWeeklyData(apptData, dateCol, studentIdCol, studentOfficeMap) {
+        // Normalize appointment location to caseload office names
+        function normalizeApptLocation(loc) {
+            if (!loc) return [];
+            var s = String(loc).trim();
+            if (s === 'Veterans Services') return ['Veteran Services'];
+            if (s === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (s === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
+            return [s];
+        }
+
+        // For each student+office pair, find the earliest appointment AT that office
+        // Also track overall first appointment (at any assigned office) for the Total column
+        var studentOfficeFirstDate = {}; // sid -> { officeName: earliestDate }
+        var studentOverallFirstDate = {}; // sid -> earliestDate (at any assigned office)
+
+        // Get appt office column (same mapping as dateCol's source)
+        var apptOfficeCol = null;
+        if (apptData.length > 0) {
+            var offCols = ['Location', 'Office', 'Advising Office'];
+            var apptKeys = Object.keys(apptData[0]);
+            for (var fc = 0; fc < offCols.length; fc++) {
+                if (apptKeys.indexOf(offCols[fc]) !== -1) { apptOfficeCol = offCols[fc]; break; }
+            }
+        }
+
+        for (var i = 0; i < apptData.length; i++) {
+            var appt = apptData[i];
+            var sid = appt[studentIdCol];
+            if (!sid) continue;
+            sid = String(sid).trim();
+            if (!studentOfficeMap[sid]) continue;
+            var dt = parseApptDate(appt[dateCol]);
+            if (!dt) continue;
+
+            // Get appointment location and normalize it
+            var apptLoc = apptOfficeCol ? appt[apptOfficeCol] : null;
+            var normalizedLocs = normalizeApptLocation(apptLoc);
+
+            // Check which of the student's assigned offices this appointment matches
+            var assignedOffices = studentOfficeMap[sid];
+            var matchedOffices = [];
+            for (var ali = 0; ali < normalizedLocs.length; ali++) {
+                for (var aoi = 0; aoi < assignedOffices.length; aoi++) {
+                    if (normalizedLocs[ali] === assignedOffices[aoi]) {
+                        matchedOffices.push(assignedOffices[aoi]);
+                    }
+                }
+            }
+
+            // Only count if appointment location matches an assigned office
+            if (matchedOffices.length === 0) continue;
+
+            // Track per-office first date
+            if (!studentOfficeFirstDate[sid]) studentOfficeFirstDate[sid] = {};
+            for (var mi = 0; mi < matchedOffices.length; mi++) {
+                var mOff = matchedOffices[mi];
+                if (!studentOfficeFirstDate[sid][mOff] || dt < studentOfficeFirstDate[sid][mOff]) {
+                    studentOfficeFirstDate[sid][mOff] = dt;
+                }
+            }
+
+            // Track overall first date (at any assigned office)
+            if (!studentOverallFirstDate[sid] || dt < studentOverallFirstDate[sid]) {
+                studentOverallFirstDate[sid] = dt;
+            }
+        }
+
+        // Group by week
+        var weekMap = {};
+        var officeSet = new Set();
+
+        // Process per-office first appointments
+        var processedSids = Object.keys(studentOfficeFirstDate);
+        for (var si = 0; si < processedSids.length; si++) {
+            var sid2 = processedSids[si];
+            var officeFirstDates = studentOfficeFirstDate[sid2];
+            var offNames = Object.keys(officeFirstDates);
+            for (var ofi = 0; ofi < offNames.length; ofi++) {
+                var offName = offNames[ofi];
+                var monday = getMonday(officeFirstDates[offName]);
+                var key = monday.toISOString().slice(0, 10);
+                if (!weekMap[key]) weekMap[key] = { monday: monday, total: 0, offices: {} };
+                if (!weekMap[key].offices[offName]) weekMap[key].offices[offName] = 0;
+                weekMap[key].offices[offName]++;
+                officeSet.add(offName);
+            }
+        }
+
+        // Process overall first appointments for the Total column
+        var overallSids = Object.keys(studentOverallFirstDate);
+        for (var oi2 = 0; oi2 < overallSids.length; oi2++) {
+            var monday2 = getMonday(studentOverallFirstDate[overallSids[oi2]]);
+            var key2 = monday2.toISOString().slice(0, 10);
+            if (!weekMap[key2]) weekMap[key2] = { monday: monday2, total: 0, offices: {} };
+            weekMap[key2].total++;
+        }
+
+        var sortedKeys = Object.keys(weekMap).sort();
+        var weeks = [];
+        for (var ski = 0; ski < sortedKeys.length; ski++) {
+            weeks.push(weekMap[sortedKeys[ski]]);
+        }
+
+        // Compute office total students (denominator for cumulative %)
+        var officeTotals = {}; // office -> total students assigned
+        var allSids = Object.keys(studentOfficeMap);
+        for (var ati = 0; ati < allSids.length; ati++) {
+            var aOffices = studentOfficeMap[allSids[ati]];
+            var aSeen = new Set();
+            for (var aoi = 0; aoi < aOffices.length; aoi++) {
+                if (aSeen.has(aOffices[aoi])) continue;
+                aSeen.add(aOffices[aoi]);
+                if (!officeTotals[aOffices[aoi]]) officeTotals[aOffices[aoi]] = 0;
+                officeTotals[aOffices[aoi]]++;
+            }
+        }
+        var grandTotalStudents = allSids.length; // deduplicated
+
+        return { weeks: weeks, offices: Array.from(officeSet).sort(), officeTotals: officeTotals, grandTotalStudents: grandTotalStudents };
+    }
+
+    function updateDateTab() {
+        if (!filteredAppointmentData || !idx || !idx.apptCols) return;
+        var dateCol = idx.apptCols.date;
+        if (!dateCol) {
+            document.getElementById('date-content').innerHTML = '<div class="placeholder-message">No date column found in appointment data. Expected: "Reported Start Date"</div>';
+            return;
+        }
+        var officeCol = idx.apptCols.office;
+        var studentIdCol = idx.apptCols.studentId;
+
+        // Build set of student IDs from filtered caseload
+        var caseloadSids = new Set();
+        var caseloadStudentIdCol = idx.caseloadCols.studentId;
+        var caseloadOfficeCol = idx.caseloadCols.office;
+
+        // Build student -> assigned offices map from caseload
+        var studentOfficeMap = {}; // sid -> [office1, office2, ...]
+        for (var ci = 0; ci < filteredData.length; ci++) {
+            var csid = filteredData[ci][caseloadStudentIdCol];
+            if (!csid) continue;
+            csid = String(csid).trim();
+            caseloadSids.add(csid);
+            var offices = String(filteredData[ci][caseloadOfficeCol] || '').split(';').map(function(o){return normalizeOfficeName(o.trim());}).filter(function(o){return o.length > 0;});
+            if (!studentOfficeMap[csid]) studentOfficeMap[csid] = [];
+            for (var ofi = 0; ofi < offices.length; ofi++) {
+                if (studentOfficeMap[csid].indexOf(offices[ofi]) === -1) {
+                    studentOfficeMap[csid].push(offices[ofi]);
+                }
+            }
+        }
+
+        // Build weekly volume data for current semester
+        var currentData = buildWeeklyData(filteredAppointmentData, dateCol, officeCol);
+        _dateWeeklyData = currentData;
+
+        // Build first appointment data using advising-filtered appointments only (consistent with office rates)
+        // Convert advisingApptsByStudent map back to flat array for processing
+        var advisingApptsList = [];
+        if (idx.advisingApptsByStudent) {
+            idx.advisingApptsByStudent.forEach(function(appts, sid) {
+                for (var ai = 0; ai < appts.length; ai++) {
+                    advisingApptsList.push(appts[ai]);
+                }
+            });
+        }
+        _dateFirstApptData = buildFirstApptWeeklyData(advisingApptsList, dateCol, studentIdCol, studentOfficeMap);
+
+        // Build data for previous semester if available
+        _datePrevWeeklyData = null;
+        _datePrevFirstApptData = null;
+        if (hasPrevSemester() && prevFilteredAppointmentData && prevFilteredAppointmentData.length > 0 && prevIdx && prevIdx.apptCols && prevIdx.apptCols.date) {
+            // Build prev student office map
+            var prevStudentOfficeMap = {};
+            var prevCaseloadStudentIdCol = prevIdx.caseloadCols.studentId;
+            var prevCaseloadOfficeCol = prevIdx.caseloadCols.office;
+            for (var pci = 0; pci < prevFilteredData.length; pci++) {
+                var psid = prevFilteredData[pci][prevCaseloadStudentIdCol];
+                if (!psid) continue;
+                psid = String(psid).trim();
+                var pOffices = String(prevFilteredData[pci][prevCaseloadOfficeCol] || '').split(';').map(function(o){return normalizeOfficeName(o.trim());}).filter(function(o){return o.length > 0;});
+                if (!prevStudentOfficeMap[psid]) prevStudentOfficeMap[psid] = [];
+                for (var pofi = 0; pofi < pOffices.length; pofi++) {
+                    if (prevStudentOfficeMap[psid].indexOf(pOffices[pofi]) === -1) {
+                        prevStudentOfficeMap[psid].push(pOffices[pofi]);
+                    }
+                }
+            }
+            _datePrevWeeklyData = buildWeeklyData(prevFilteredAppointmentData, prevIdx.apptCols.date, prevIdx.apptCols.office);
+            // Use advising-filtered appointments for prev semester
+            var prevAdvisingApptsList = [];
+            if (prevIdx.advisingApptsByStudent) {
+                prevIdx.advisingApptsByStudent.forEach(function(appts, sid) {
+                    for (var ai = 0; ai < appts.length; ai++) {
+                        prevAdvisingApptsList.push(appts[ai]);
+                    }
+                });
+            }
+            _datePrevFirstApptData = buildFirstApptWeeklyData(prevAdvisingApptsList, prevIdx.apptCols.date, prevIdx.apptCols.studentId, prevStudentOfficeMap);
+        }
+
+        renderDateTab();
+    }
+
+    function renderDateTab() {
+        if (!_dateWeeklyData) return;
+        var volumeData = _dateWeeklyData;
+        var prevVolumeData = _datePrevWeeklyData;
+        var firstData = _dateFirstApptData;
+        var prevFirstData = _datePrevFirstApptData;
+        var showOffices = _dateOfficeBreakout;
+        var curLabel = getCurrentSemesterLabel();
+        var prevLabel = hasPrevSemester() ? getPrevSemesterLabel() : '';
+
+        var html = '';
+
+        // Toggle button
+        html += '<div style="margin-bottom: 15px;">';
+        html += '<button onclick="_dateOfficeBreakout = !_dateOfficeBreakout; renderDateTab();" style="padding: 8px 16px; border: 1px solid #667eea; border-radius: 8px; background: ' + (showOffices ? 'linear-gradient(45deg, #667eea, #764ba2); color: white;' : 'white; color: #667eea;') + ' font-size: 13px; font-weight: 600; cursor: pointer;">' + (showOffices ? '📊 Showing by Office — Click for Total' : '📊 Showing Total — Click for Office Breakout') + '</button>';
+        html += '</div>';
+
+        // --- First Appointments Chart ---
+        html += buildWeeklyChart(firstData, prevFirstData, showOffices, curLabel, prevLabel, 'New Unique Students by Week (First Appointment)');
+
+        // --- First Appointments Table (Cumulative) ---
+        html += buildFirstApptCumulativeTable(firstData, prevFirstData, showOffices, prevLabel);
+
+        // --- Total Volume Table ---
+        html += buildWeeklyTable(volumeData, prevVolumeData, showOffices, prevLabel, 'Total Appointment Volume by Week', 'Total number of appointments each week, counting all visits including repeat visits from the same student.');
+
+        document.getElementById('date-content').innerHTML = html;
+    }
+
+    // Shared chart builder for weekly data
+    function buildWeeklyChart(currentData, prevData, showOffices, curLabel, prevLabel, title) {
+        var html = '';
+        html += '<div style="margin-bottom: 30px; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e9ecef;">';
+        html += '<h4 style="margin: 0 0 15px 0; color: #2c3e50;">' + title + '</h4>';
+
+        if (!currentData || currentData.weeks.length === 0) {
+            html += '<p style="color: #6c757d;">No appointment dates found.</p></div>';
+            return html;
+        }
+
+        var maxVal = 0;
+        for (var ci = 0; ci < currentData.weeks.length; ci++) {
+            if (currentData.weeks[ci].total > maxVal) maxVal = currentData.weeks[ci].total;
+        }
+        if (prevData) {
+            for (var pi = 0; pi < prevData.weeks.length; pi++) {
+                if (prevData.weeks[pi].total > maxVal) maxVal = prevData.weeks[pi].total;
+            }
+        }
+
+        var chartHeight = 300;
+        var barAreaHeight = chartHeight - 40;
+        var officeColors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#fda085', '#43e97b', '#38f9d7', '#fa709a', '#fee140', '#a18cd1', '#fbc2eb', '#8fd3f4'];
+
+        if (!showOffices) {
+            var allWeeks = currentData.weeks;
+            var barWidth = Math.max(20, Math.min(60, Math.floor(800 / (allWeeks.length || 1)) - 8));
+            var chartWidth = allWeeks.length * (barWidth + (prevData ? barWidth + 4 : 0) + 8) + 60;
+
+            html += '<div style="overflow-x: auto;">';
+            html += '<svg width="' + Math.max(chartWidth, 400) + '" height="' + chartHeight + '" style="font-family: sans-serif;">';
+
+            for (var bi = 0; bi < allWeeks.length; bi++) {
+                var w = allWeeks[bi];
+                var bh = maxVal > 0 ? (w.total / maxVal) * barAreaHeight : 0;
+                var xBase = 50 + bi * (barWidth + (prevData ? barWidth + 4 : 0) + 8);
+                var y = chartHeight - 30 - bh;
+
+                html += '<rect x="' + xBase + '" y="' + y + '" width="' + barWidth + '" height="' + bh + '" fill="#667eea" rx="3" opacity="0.85"/>';
+                html += '<text x="' + (xBase + barWidth / 2) + '" y="' + (y - 4) + '" text-anchor="middle" fill="#333" font-size="11" font-weight="600">' + w.total + '</text>';
+
+                if (prevData && prevData.weeks[bi]) {
+                    var pw = prevData.weeks[bi];
+                    var pbh = maxVal > 0 ? (pw.total / maxVal) * barAreaHeight : 0;
+                    var px = xBase + barWidth + 2;
+                    var py = chartHeight - 30 - pbh;
+                    html += '<rect x="' + px + '" y="' + py + '" width="' + barWidth + '" height="' + pbh + '" fill="#ccc" rx="3" opacity="0.6"/>';
+                    html += '<text x="' + (px + barWidth / 2) + '" y="' + (py - 4) + '" text-anchor="middle" fill="#888" font-size="10">' + pw.total + '</text>';
+                }
+
+                var wLabel = (w.monday.getMonth() + 1) + '/' + w.monday.getDate();
+                html += '<text x="' + (xBase + barWidth / 2 + (prevData ? (barWidth + 2) / 2 : 0)) + '" y="' + (chartHeight - 8) + '" text-anchor="middle" fill="#666" font-size="10" transform="rotate(-45,' + (xBase + barWidth / 2) + ',' + (chartHeight - 8) + ')">' + wLabel + '</text>';
+            }
+            html += '</svg></div>';
+
+            if (prevData) {
+                html += '<div style="margin-top: 10px; font-size: 12px; color: #666;">';
+                html += '<span style="display: inline-block; width: 12px; height: 12px; background: #667eea; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span> ' + curLabel + ' ';
+                html += '<span style="display: inline-block; width: 12px; height: 12px; background: #ccc; border-radius: 2px; margin-left: 12px; margin-right: 4px; vertical-align: middle;"></span> ' + prevLabel;
+                html += '</div>';
+            }
+        } else {
+            var offices = currentData.offices;
+            var allWeeks2 = currentData.weeks;
+            var barWidth2 = Math.max(30, Math.min(60, Math.floor(800 / (allWeeks2.length || 1)) - 8));
+            var chartWidth2 = allWeeks2.length * (barWidth2 + 8) + 60;
+
+            html += '<div style="overflow-x: auto;">';
+            html += '<svg width="' + Math.max(chartWidth2, 400) + '" height="' + (chartHeight + 20) + '" style="font-family: sans-serif;">';
+
+            for (var bi2 = 0; bi2 < allWeeks2.length; bi2++) {
+                var w2 = allWeeks2[bi2];
+                var xBase2 = 50 + bi2 * (barWidth2 + 8);
+                var yBottom = chartHeight - 30;
+                var cumHeight = 0;
+
+                for (var ofi = 0; ofi < offices.length; ofi++) {
+                    var offCount = w2.offices[offices[ofi]] || 0;
+                    if (offCount === 0) continue;
+                    var segH = maxVal > 0 ? (offCount / maxVal) * barAreaHeight : 0;
+                    var segY = yBottom - cumHeight - segH;
+                    html += '<rect x="' + xBase2 + '" y="' + segY + '" width="' + barWidth2 + '" height="' + segH + '" fill="' + officeColors[ofi % officeColors.length] + '" rx="2" opacity="0.85"/>';
+                    cumHeight += segH;
+                }
+
+                html += '<text x="' + (xBase2 + barWidth2 / 2) + '" y="' + (yBottom - cumHeight - 4) + '" text-anchor="middle" fill="#333" font-size="11" font-weight="600">' + w2.total + '</text>';
+
+                var wLabel2 = (w2.monday.getMonth() + 1) + '/' + w2.monday.getDate();
+                html += '<text x="' + (xBase2 + barWidth2 / 2) + '" y="' + (chartHeight - 8) + '" text-anchor="middle" fill="#666" font-size="10" transform="rotate(-45,' + (xBase2 + barWidth2 / 2) + ',' + (chartHeight - 8) + ')">' + wLabel2 + '</text>';
+            }
+            html += '</svg></div>';
+
+            html += '<div style="margin-top: 10px; font-size: 12px; color: #666; display: flex; flex-wrap: wrap; gap: 12px;">';
+            for (var oli = 0; oli < offices.length; oli++) {
+                html += '<span><span style="display: inline-block; width: 12px; height: 12px; background: ' + officeColors[oli % officeColors.length] + '; border-radius: 2px; margin-right: 4px; vertical-align: middle;"></span>' + offices[oli] + '</span>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // Shared table builder for weekly data
+    function buildWeeklyTable(currentData, prevData, showOffices, prevLabel, title, subtitle) {
+        var html = '';
+        html += '<div style="margin-bottom: 30px; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e9ecef;">';
+        html += '<h4 style="margin: 0 0 5px 0; color: #2c3e50;">' + title + '</h4>';
+        html += '<p style="margin: 0 0 15px 0; color: #6c757d; font-size: 13px; font-style: italic;">' + subtitle + '</p>';
+
+        if (!currentData || currentData.weeks.length === 0) {
+            html += '<p style="color: #6c757d;">No appointment dates found.</p></div>';
+            return html;
+        }
+
+        html += '<div style="overflow-x: auto;"><table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+        html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Week</th>';
+
+        var offices2 = currentData.offices;
+        if (showOffices) {
+            for (var ohi = 0; ohi < offices2.length; ohi++) {
+                html += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">' + offices2[ohi] + '</th>';
+            }
+        }
+        html += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Total</th>';
+        if (prevData) {
+            html += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">' + prevLabel + ' Total</th>';
+            html += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Diff</th>';
+        }
+        html += '</tr></thead><tbody>';
+
+        var maxWeeks = currentData.weeks.length;
+        if (prevData && prevData.weeks.length > maxWeeks) maxWeeks = prevData.weeks.length;
+
+        var grandTotal = 0, grandPrevTotal = 0;
+        var officeGrandTotals = {};
+        if (showOffices) {
+            for (var ogi = 0; ogi < offices2.length; ogi++) officeGrandTotals[offices2[ogi]] = 0;
+        }
+
+        for (var ti = 0; ti < maxWeeks; ti++) {
+            var cw = ti < currentData.weeks.length ? currentData.weeks[ti] : null;
+            var pw2 = prevData && ti < prevData.weeks.length ? prevData.weeks[ti] : null;
+            var label = cw ? formatWeekLabel(cw.monday) : (pw2 ? formatWeekLabel(pw2.monday) : '');
+
+            html += '<tr style="border-bottom: 1px solid #e9ecef;">';
+            html += '<td style="padding: 8px 10px; font-weight: 500;">' + label + '</td>';
+
+            if (showOffices) {
+                for (var oti = 0; oti < offices2.length; oti++) {
+                    var offVal = cw ? (cw.offices[offices2[oti]] || 0) : 0;
+                    html += '<td style="padding: 8px 10px; text-align: center;">' + offVal + '</td>';
+                    officeGrandTotals[offices2[oti]] += offVal;
+                }
+            }
+
+            var curTotal = cw ? cw.total : 0;
+            grandTotal += curTotal;
+            html += '<td style="padding: 8px 10px; text-align: center; font-weight: 600;">' + curTotal + '</td>';
+
+            if (prevData) {
+                var prevTotal = pw2 ? pw2.total : 0;
+                grandPrevTotal += prevTotal;
+                var diff = curTotal - prevTotal;
+                var diffColor = diff > 0 ? '#28a745' : (diff < 0 ? '#dc3545' : '#666');
+                html += '<td style="padding: 8px 10px; text-align: center;">' + prevTotal + '</td>';
+                html += '<td style="padding: 8px 10px; text-align: center; color: ' + diffColor + '; font-weight: 600;">' + (diff > 0 ? '+' : '') + diff + '</td>';
+            }
+            html += '</tr>';
+        }
+
+        // Grand total row
+        html += '<tr style="background: #f8f9fa; border-top: 2px solid #dee2e6; font-weight: 700;">';
+        html += '<td style="padding: 10px;">TOTAL</td>';
+        if (showOffices) {
+            for (var goi = 0; goi < offices2.length; goi++) {
+                html += '<td style="padding: 10px; text-align: center;">' + (officeGrandTotals[offices2[goi]] || 0) + '</td>';
+            }
+        }
+        html += '<td style="padding: 10px; text-align: center;">' + grandTotal + '</td>';
+        if (prevData) {
+            var grandDiff = grandTotal - grandPrevTotal;
+            var gDiffColor = grandDiff > 0 ? '#28a745' : (grandDiff < 0 ? '#dc3545' : '#666');
+            html += '<td style="padding: 10px; text-align: center;">' + grandPrevTotal + '</td>';
+            html += '<td style="padding: 10px; text-align: center; color: ' + gDiffColor + ';">' + (grandDiff > 0 ? '+' : '') + grandDiff + '</td>';
+        }
+        html += '</tr>';
+        html += '</tbody></table></div></div>';
+        return html;
+    }
+
+    // Cumulative first appointments table
+    function buildFirstApptCumulativeTable(currentData, prevData, showOffices, prevLabel) {
+        var html = '';
+        html += '<div style="margin-bottom: 30px; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e9ecef;">';
+        html += '<h4 style="margin: 0 0 5px 0; color: #2c3e50;">Cumulative First Appointments by Week</h4>';
+        html += '<p style="margin: 0 0 15px 0; color: #6c757d; font-size: 13px; font-style: italic;">Running total of unique students who have had their first appointment, shown as cumulative count and percentage of total assigned students.</p>';
+
+        if (!currentData || currentData.weeks.length === 0) {
+            html += '<p style="color: #6c757d;">No appointment dates found.</p></div>';
+            return html;
+        }
+
+        var offices2 = currentData.offices;
+        var officeTotals = currentData.officeTotals || {};
+        var grandTotalStudents = currentData.grandTotalStudents || 0;
+        var prevOfficeTotals = prevData ? (prevData.officeTotals || {}) : {};
+        var prevGrandTotalStudents = prevData ? (prevData.grandTotalStudents || 0) : 0;
+
+        html += '<div style="overflow-x: auto;"><table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+        html += '<thead><tr style="background: #f8f9fa;"><th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Week</th>';
+
+        if (showOffices) {
+            for (var ohi = 0; ohi < offices2.length; ohi++) {
+                var offTotal = officeTotals[offices2[ohi]] || 0;
+                html += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">' + offices2[ohi] + '<br><span style="font-weight: 400; font-size: 11px; color: #888;">(n=' + offTotal + ')</span></th>';
+            }
+        }
+        html += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">Total<br><span style="font-weight: 400; font-size: 11px; color: #888;">(n=' + grandTotalStudents + ')</span></th>';
+        if (prevData) {
+            html += '<th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6;">' + prevLabel + ' Total<br><span style="font-weight: 400; font-size: 11px; color: #888;">(n=' + prevGrandTotalStudents + ')</span></th>';
+        }
+        html += '</tr></thead><tbody>';
+
+        var maxWeeks = currentData.weeks.length;
+        if (prevData && prevData.weeks.length > maxWeeks) maxWeeks = prevData.weeks.length;
+
+        // Track cumulative counts
+        var cumOffice = {};
+        if (showOffices) {
+            for (var coi = 0; coi < offices2.length; coi++) cumOffice[offices2[coi]] = 0;
+        }
+        var cumTotal = 0;
+        var prevCumOffice = {};
+        var prevCumTotal = 0;
+
+        for (var ti = 0; ti < maxWeeks; ti++) {
+            var cw = ti < currentData.weeks.length ? currentData.weeks[ti] : null;
+            var pw2 = prevData && ti < prevData.weeks.length ? prevData.weeks[ti] : null;
+            var label = cw ? formatWeekLabel(cw.monday) : (pw2 ? formatWeekLabel(pw2.monday) : '');
+
+            // Update cumulative
+            if (cw) cumTotal += cw.total;
+            if (pw2) prevCumTotal += pw2.total;
+
+            html += '<tr style="border-bottom: 1px solid #e9ecef;">';
+            html += '<td style="padding: 8px 10px; font-weight: 500;">' + label + '</td>';
+
+            if (showOffices) {
+                for (var oti = 0; oti < offices2.length; oti++) {
+                    var offName = offices2[oti];
+                    var weekVal = cw ? (cw.offices[offName] || 0) : 0;
+                    cumOffice[offName] = (cumOffice[offName] || 0) + weekVal;
+                    var offDenom = officeTotals[offName] || 0;
+                    var offPct = offDenom > 0 ? ((cumOffice[offName] / offDenom) * 100).toFixed(1) : '0.0';
+                    html += '<td style="padding: 8px 10px; text-align: center;">' + cumOffice[offName] + ' <span style="color: #888; font-size: 12px;">(' + offPct + '%)</span></td>';
+                }
+            }
+
+            var totalPct = grandTotalStudents > 0 ? ((cumTotal / grandTotalStudents) * 100).toFixed(1) : '0.0';
+            html += '<td style="padding: 8px 10px; text-align: center; font-weight: 600;">' + cumTotal + ' <span style="color: #888; font-size: 12px;">(' + totalPct + '%)</span></td>';
+
+            if (prevData) {
+                var prevTotalPct = prevGrandTotalStudents > 0 ? ((prevCumTotal / prevGrandTotalStudents) * 100).toFixed(1) : '0.0';
+                html += '<td style="padding: 8px 10px; text-align: center;">' + prevCumTotal + ' <span style="color: #888; font-size: 12px;">(' + prevTotalPct + '%)</span></td>';
+            }
+            html += '</tr>';
+        }
+
+        html += '</tbody></table></div></div>';
+        return html;
+    }
+
+    function buildExportSheet(weeklyData, prevWeeklyData, offices, prevLabel) {
+        var rows = [];
+        var header = ['Week'];
+        for (var ohi = 0; ohi < offices.length; ohi++) header.push(offices[ohi]);
+        header.push('Total');
+        if (prevWeeklyData) {
+            header.push(prevLabel + ' Total');
+            header.push('Diff');
+        }
+        rows.push(header);
+
+        var maxWeeks = weeklyData.weeks.length;
+        if (prevWeeklyData && prevWeeklyData.weeks.length > maxWeeks) maxWeeks = prevWeeklyData.weeks.length;
+
+        var grandTotal = 0, grandPrevTotal = 0;
+        var officeGrandTotals = {};
+        for (var ogi = 0; ogi < offices.length; ogi++) officeGrandTotals[offices[ogi]] = 0;
+
+        for (var wi = 0; wi < maxWeeks; wi++) {
+            var cw = wi < weeklyData.weeks.length ? weeklyData.weeks[wi] : null;
+            var pw = prevWeeklyData && wi < prevWeeklyData.weeks.length ? prevWeeklyData.weeks[wi] : null;
+            var row = [cw ? formatWeekLabel(cw.monday) : (pw ? formatWeekLabel(pw.monday) : '')];
+
+            for (var oei = 0; oei < offices.length; oei++) {
+                var val = cw ? (cw.offices[offices[oei]] || 0) : 0;
+                row.push(val);
+                officeGrandTotals[offices[oei]] += val;
+            }
+
+            var curT = cw ? cw.total : 0;
+            grandTotal += curT;
+            row.push(curT);
+
+            if (prevWeeklyData) {
+                var prevT = pw ? pw.total : 0;
+                grandPrevTotal += prevT;
+                row.push(prevT);
+                row.push(curT - prevT);
+            }
+            rows.push(row);
+        }
+
+        var grandRow = ['TOTAL'];
+        for (var goi = 0; goi < offices.length; goi++) grandRow.push(officeGrandTotals[offices[goi]]);
+        grandRow.push(grandTotal);
+        if (prevWeeklyData) {
+            grandRow.push(grandPrevTotal);
+            grandRow.push(grandTotal - grandPrevTotal);
+        }
+        rows.push(grandRow);
+        return rows;
+    }
+
+    function exportDateExcel() {
+        try {
+            if (!_dateWeeklyData || _dateWeeklyData.weeks.length === 0) {
+                alert('No date data available. Please run the analysis first.');
+                return;
+            }
+            var prevLabel = hasPrevSemester() ? getPrevSemesterLabel() : '';
+            var offices = _dateWeeklyData.offices;
+
+            var wb = XLSX.utils.book_new();
+
+            // First Appointments sheet (with per-week, cumulative, cumulative %)
+            if (_dateFirstApptData && _dateFirstApptData.weeks.length > 0) {
+                var fd = _dateFirstApptData;
+                var pfd = _datePrevFirstApptData;
+                var fOffices = fd.offices;
+                var fOfficeTotals = fd.officeTotals || {};
+                var fGrandTotal = fd.grandTotalStudents || 0;
+
+                var firstRows = [];
+                var fHeader = ['Week'];
+                for (var fhi = 0; fhi < fOffices.length; fhi++) {
+                    fHeader.push(fOffices[fhi] + ' Per Week');
+                    fHeader.push(fOffices[fhi] + ' Cumulative');
+                    fHeader.push(fOffices[fhi] + ' Cumulative %');
+                }
+                fHeader.push('Total Per Week');
+                fHeader.push('Total Cumulative');
+                fHeader.push('Total Cumulative %');
+                if (pfd) {
+                    fHeader.push(prevLabel + ' Per Week');
+                    fHeader.push(prevLabel + ' Cumulative');
+                    fHeader.push(prevLabel + ' Cumulative %');
+                }
+                firstRows.push(fHeader);
+
+                var fMaxWeeks = fd.weeks.length;
+                if (pfd && pfd.weeks.length > fMaxWeeks) fMaxWeeks = pfd.weeks.length;
+
+                var fCumOffice = {};
+                for (var fcoi = 0; fcoi < fOffices.length; fcoi++) fCumOffice[fOffices[fcoi]] = 0;
+                var fCumTotal = 0;
+                var fPrevCumTotal = 0;
+
+                for (var fwi = 0; fwi < fMaxWeeks; fwi++) {
+                    var fcw = fwi < fd.weeks.length ? fd.weeks[fwi] : null;
+                    var fpw = pfd && fwi < pfd.weeks.length ? pfd.weeks[fwi] : null;
+                    var fRow = [fcw ? formatWeekLabel(fcw.monday) : (fpw ? formatWeekLabel(fpw.monday) : '')];
+
+                    var weekTotal = fcw ? fcw.total : 0;
+                    fCumTotal += weekTotal;
+
+                    for (var foei = 0; foei < fOffices.length; foei++) {
+                        var fOffName = fOffices[foei];
+                        var fWeekVal = fcw ? (fcw.offices[fOffName] || 0) : 0;
+                        fCumOffice[fOffName] += fWeekVal;
+                        var fOffDenom = fOfficeTotals[fOffName] || 0;
+                        var fOffPct = fOffDenom > 0 ? +((fCumOffice[fOffName] / fOffDenom) * 100).toFixed(1) : 0;
+                        fRow.push(fWeekVal);
+                        fRow.push(fCumOffice[fOffName]);
+                        fRow.push(fOffPct);
+                    }
+
+                    var fTotalPct = fGrandTotal > 0 ? +((fCumTotal / fGrandTotal) * 100).toFixed(1) : 0;
+                    fRow.push(weekTotal);
+                    fRow.push(fCumTotal);
+                    fRow.push(fTotalPct);
+
+                    if (pfd) {
+                        var fPrevWeek = fpw ? fpw.total : 0;
+                        fPrevCumTotal += fPrevWeek;
+                        var fPrevGrand = pfd.grandTotalStudents || 0;
+                        var fPrevPct = fPrevGrand > 0 ? +((fPrevCumTotal / fPrevGrand) * 100).toFixed(1) : 0;
+                        fRow.push(fPrevWeek);
+                        fRow.push(fPrevCumTotal);
+                        fRow.push(fPrevPct);
+                    }
+                    firstRows.push(fRow);
+                }
+
+                var wsFirst = XLSX.utils.aoa_to_sheet(firstRows);
+                XLSX.utils.book_append_sheet(wb, wsFirst, 'First Appointments');
+            }
+
+            // Total Volume sheet
+            var volRows = buildExportSheet(_dateWeeklyData, _datePrevWeeklyData, offices, prevLabel);
+            var wsVol = XLSX.utils.aoa_to_sheet(volRows);
+            XLSX.utils.book_append_sheet(wb, wsVol, 'Total Volume');
+
+            var dateParts = getCurrentDateParts();
+            XLSX.writeFile(wb, 'Advising_Weekly_Appointments_' + dateParts.mm + '.' + dateParts.dd + '.' + dateParts.yy + '.xlsx');
+        } catch (error) {
+            console.error('Error exporting date Excel:', error);
+            alert('Failed to export date data. Please check console for details.');
+        }
+    }
 
     function showTab(tabName) {
         var tabs = document.querySelectorAll('.tab-content');
