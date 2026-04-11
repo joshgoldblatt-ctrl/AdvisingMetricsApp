@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 7.3</title>
+    <title>LaGuardia Advising Metrics App - Version 7.5</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -896,7 +896,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 7.3 - Released March 6, 2026</div>
+            <div class="subtitle">Version 7.5 - Released April 10, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -908,6 +908,16 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.5 — April 10, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Services tab in Advising Office Report export</strong> — New last tab showing Location → Service breakdown with appointment count and unique student count, matching the in-app Services tab.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Data Dictionary updated</strong> — Added Services tab definition to the Advising Office Report Data Dictionary.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Default semester updated</strong> — Current Semester now defaults to SP 26.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.4 — April 10, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Services tab redesign</strong> — Services are now unbundled from comma-separated values so each individual service gets its own row. Display is restructured as Location → Service with appointment count and unique student count per service within each location.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Advising Office Report — export cleanup</strong> — Removed By Department and By Major tabs. Added Data Dictionary as first tab. Column renames: New/Cont/Total Assigned Adv → Assigned Appts; New/Cont/Total Office Appt → Office Appts.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Advisor Report — export cleanup</strong> — Removed By Department tab. Added Data Dictionary as first tab. Column renames: Total Appointments (duplicated) → Appointment volume all; Total Appts w/ Assigned → Appointment volume assigned.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.3 — March 6, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>By Date tab</strong> — New tab with weekly appointment analysis. Bar chart and cumulative table showing first appointments by week (unique students having their first appointment at each assigned office). Separate total volume table showing raw weekly appointment counts. Office breakout toggle for both tables and chart. Comparison overlay when prior semester data is loaded.</p>
@@ -1031,12 +1041,12 @@
                 <label style="font-weight: 600; color: #495057; font-size: 14px;">Semester Label:</label>
                 <select id="current-semester-term" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px;">
                     <option value="FA">FA</option>
-                    <option value="SP">SP</option>
+                    <option value="SP" selected>SP</option>
                 </select>
                 <select id="current-semester-year" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px;">
                     <option value="24">24</option>
-                    <option value="25" selected>25</option>
-                    <option value="26">26</option>
+                    <option value="25">25</option>
+                    <option value="26" selected>26</option>
                     <option value="27">27</option>
                 </select>
             </div>
@@ -6016,58 +6026,105 @@
             content.innerHTML = '<div class="placeholder-message">No services column found in appointment data. Looking for: ' + servicesColumns.join(', ') + '</div>';
             return;
         }
-        var servicesStats = {};
-        var totalAppointments = 0;
         var apptCols = idx && idx.apptCols ? idx.apptCols : getColumnMappings(filteredAppointmentData[0]);
+        var locationColumn = apptCols.office;
+
+        // Build Location -> Service -> { count, students } structure
+        // Each comma-separated service is unbundled into its own entry
+        var locationStats = {}; // location -> { serviceName -> { count, students: {} } }
+        var grandTotalAppointments = 0;
+        var grandUniqueServices = new Set();
 
         for (var i = 0; i < filteredAppointmentData.length; i++) {
             var a = filteredAppointmentData[i];
-            var service = a[servicesColumn];
-            if (service && service.toString().trim()) {
-                var key = service.toString().trim();
-                if (!servicesStats[key]) servicesStats[key] = { count: 0, students: {} };
-                servicesStats[key].count++;
-                var sid = a[apptCols.studentId];
-                if (sid) servicesStats[key].students[sid] = true;
-                totalAppointments++;
+            var serviceRaw = a[servicesColumn];
+            var location = locationColumn ? (a[locationColumn] || 'Unknown Location') : 'Unknown Location';
+            location = String(location).trim() || 'Unknown Location';
+            var sid = a[apptCols.studentId];
+
+            if (!serviceRaw || !String(serviceRaw).trim()) continue;
+
+            // Split comma-separated services
+            var services = String(serviceRaw).split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+
+            grandTotalAppointments++;
+
+            if (!locationStats[location]) locationStats[location] = {};
+
+            for (var j = 0; j < services.length; j++) {
+                var svc = services[j];
+                grandUniqueServices.add(svc);
+                if (!locationStats[location][svc]) locationStats[location][svc] = { count: 0, students: {} };
+                locationStats[location][svc].count++;
+                if (sid) locationStats[location][svc].students[sid] = true;
             }
         }
 
-        var html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">';
+        // Summary scorecards
+        var html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">';
         html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">';
-        html += '<div style="font-size: 1.8em; font-weight: 700; color: #667eea;">' + totalAppointments + '</div>';
+        html += '<div style="font-size: 1.8em; font-weight: 700; color: #667eea;">' + grandTotalAppointments + '</div>';
         html += '<div style="font-size: 0.9em; color: #6c757d; margin-top: 5px;">Total Appointments</div></div>';
         html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">';
-        html += '<div style="font-size: 1.8em; font-weight: 700; color: #667eea;">' + Object.keys(servicesStats).length + '</div>';
-        html += '<div style="font-size: 0.9em; color: #6c757d; margin-top: 5px;">Different Services</div></div>';
+        html += '<div style="font-size: 1.8em; font-weight: 700; color: #667eea;">' + Object.keys(locationStats).length + '</div>';
+        html += '<div style="font-size: 0.9em; color: #6c757d; margin-top: 5px;">Locations</div></div>';
+        html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">';
+        html += '<div style="font-size: 1.8em; font-weight: 700; color: #667eea;">' + grandUniqueServices.size + '</div>';
+        html += '<div style="font-size: 0.9em; color: #6c757d; margin-top: 5px;">Unique Services</div></div>';
         html += '</div>';
 
-        html += '<table class="data-table">';
-        html += '<thead><tr>';
-        html += '<th>Reported Service</th>';
-        html += '<th>Total Appointments</th>';
-        html += '<th>Unique Students</th>';
-        html += '<th>% of Total Appointments</th>';
-        html += '</tr></thead><tbody>';
+        // One section per location, sorted alphabetically
+        var locations = Object.keys(locationStats).sort();
 
-        var arr = [];
-        for (var s in servicesStats) arr.push([s, servicesStats[s]]);
-        arr.sort(function(a, b) { return b[1].count - a[1].count; });
+        for (var li = 0; li < locations.length; li++) {
+            var loc = locations[li];
+            var serviceMap = locationStats[loc];
 
-        for (var i2 = 0; i2 < arr.length; i2++) {
-            var name = arr[i2][0];
-            var st = arr[i2][1];
-            var pct = totalAppointments ? ((st.count / totalAppointments) * 100).toFixed(1) : '0.0';
-            var uniq = Object.keys(st.students).length;
-            html += '<tr>';
-            html += '<td>' + name + '</td>';
-            html += '<td>' + st.count + '</td>';
-            html += '<td>' + uniq + '</td>';
-            html += '<td>' + pct + '%</td>';
-            html += '</tr>';
+            // Sort services by count descending
+            var serviceArr = [];
+            for (var svcName in serviceMap) serviceArr.push([svcName, serviceMap[svcName]]);
+            serviceArr.sort(function(a, b) { return b[1].count - a[1].count; });
+
+            // Location total appointments (count of raw appointments, not unbundled)
+            // Use grandTotalAppointments per location — recount from original loop isn't available,
+            // so use the max count across services as a proxy note; instead show sum of service counts
+            var locApptTotal = 0;
+            for (var si = 0; si < serviceArr.length; si++) locApptTotal = Math.max(locApptTotal, serviceArr[si][1].count);
+            // Actually just show count of unique appointments at this location
+            // We need a separate pass — build location appt counts
+            var locTotalAppts = 0;
+            for (var fai = 0; fai < filteredAppointmentData.length; fai++) {
+                var fa = filteredAppointmentData[fai];
+                var faLoc = locationColumn ? (fa[locationColumn] || 'Unknown Location') : 'Unknown Location';
+                if (String(faLoc).trim() === loc) locTotalAppts++;
+            }
+
+            html += '<div style="margin-bottom: 30px;">';
+            html += '<h4 style="color: #2c3e50; font-size: 1.05em; font-weight: 700; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #667eea;">';
+            html += escapeHtml(loc) + ' <span style="font-weight: 400; color: #6c757d; font-size: 0.9em;">(' + locTotalAppts + ' appointments)</span></h4>';
+
+            html += '<table class="data-table">';
+            html += '<thead><tr>';
+            html += '<th>Service</th>';
+            html += '<th>Appointment Count</th>';
+            html += '<th>Unique Students</th>';
+            html += '</tr></thead><tbody>';
+
+            for (var si2 = 0; si2 < serviceArr.length; si2++) {
+                var sName = serviceArr[si2][0];
+                var sSt = serviceArr[si2][1];
+                var uniq = Object.keys(sSt.students).length;
+                html += '<tr>';
+                html += '<td>' + escapeHtml(sName) + '</td>';
+                html += '<td>' + sSt.count + '</td>';
+                html += '<td>' + uniq + '</td>';
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+            html += '</div>';
         }
 
-        html += '</tbody></table>';
         content.innerHTML = html;
     }
 
@@ -7087,11 +7144,11 @@
 
             if (hasSTExport) {
                 var headerRow = ['Advising Office',
-                    'New Students', 'New Assigned Adv', 'New Assigned Rate', 'New Office Appt', 'New Office Rate'];
+                    'New Students', 'New Assigned Appts', 'New Assigned Rate', 'New Office Appts', 'New Office Rate'];
                 if (prevNewOffResExp) headerRow = headerRow.concat(['New Assigned Diff', 'New Office Diff']);
-                headerRow = headerRow.concat(['Continuing Students', 'Cont Assigned Adv', 'Cont Assigned Rate', 'Cont Office Appt', 'Cont Office Rate']);
+                headerRow = headerRow.concat(['Continuing Students', 'Cont Assigned Appts', 'Cont Assigned Rate', 'Cont Office Appts', 'Cont Office Rate']);
                 if (prevContOffResExp) headerRow = headerRow.concat(['Cont Assigned Diff', 'Cont Office Diff']);
-                headerRow = headerRow.concat(['Total Students', 'Total Assigned Adv', 'Total Assigned Rate', 'Total Office Appt', 'Total Office Rate']);
+                headerRow = headerRow.concat(['Total Students', 'Total Assigned Appts', 'Total Assigned Rate', 'Total Office Appts', 'Total Office Rate']);
                 if (hasPrev && prevOffRes) headerRow = headerRow.concat(['Total Assigned Diff', 'Total Office Diff']);
                 officeRows.push(headerRow);
 
@@ -7303,68 +7360,84 @@
             var wsFreq = XLSX.utils.aoa_to_sheet(freqRows);
             XLSX.utils.book_append_sheet(wb, wsFreq, 'Frequency');
 
-            // --- Academic Department sheet ---
-            var deptAnalytics = calculateDepartmentAnalytics();
-            if (deptAnalytics) {
-                var deptRows = [['Department', 'Total Students', 'Met Assigned Advisor', 'Assigned Advisor Rate', 'Office Appointment', 'Office Appt Rate']];
-                var deptKeys = Object.keys(deptAnalytics).sort();
-                var dTotalS = 0, dTotalA = 0, dTotalO = 0;
-                for (var di = 0; di < deptKeys.length; di++) {
-                    var dk = deptKeys[di], ds = deptAnalytics[dk];
-                    var daRate = ds.totalStudents ? +(ds.studentsWithAssignedAdvisor / ds.totalStudents * 100).toFixed(1) : 0;
-                    var doRate = ds.totalStudents ? +(ds.studentsWithOfficeAppointments / ds.totalStudents * 100).toFixed(1) : 0;
-                    deptRows.push([dk, ds.totalStudents, ds.studentsWithAssignedAdvisor || 0, daRate, ds.studentsWithOfficeAppointments, doRate]);
-                    dTotalS += ds.totalStudents; dTotalA += (ds.studentsWithAssignedAdvisor || 0); dTotalO += ds.studentsWithOfficeAppointments;
+            // --- Services sheet (last tab) ---
+            var servicesColExport = findColumn(Object.keys(filteredAppointmentData[0]), ['Reported Services', 'Reported_Services']);
+            var servicesRows = [['Location', 'Service', 'Appointment Count', 'Unique Students']];
+            if (servicesColExport && idx && idx.apptCols) {
+                var svcLocationCol = idx.apptCols.office;
+                // Build Location -> Service -> { count, students }
+                var svcExportMap = {};
+                for (var svi = 0; svi < filteredAppointmentData.length; svi++) {
+                    var sva = filteredAppointmentData[svi];
+                    var svcRaw = sva[servicesColExport];
+                    var svcLoc = svcLocationCol ? (sva[svcLocationCol] || 'Unknown Location') : 'Unknown Location';
+                    svcLoc = String(svcLoc).trim() || 'Unknown Location';
+                    var svcSid = sva[idx.apptCols.studentId];
+                    if (!svcRaw || !String(svcRaw).trim()) continue;
+                    var svcList = String(svcRaw).split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+                    if (!svcExportMap[svcLoc]) svcExportMap[svcLoc] = {};
+                    for (var svi2 = 0; svi2 < svcList.length; svi2++) {
+                        var svcName = svcList[svi2];
+                        if (!svcExportMap[svcLoc][svcName]) svcExportMap[svcLoc][svcName] = { count: 0, students: {} };
+                        svcExportMap[svcLoc][svcName].count++;
+                        if (svcSid) svcExportMap[svcLoc][svcName].students[svcSid] = true;
+                    }
                 }
-                deptRows.push(['TOTAL', dTotalS, dTotalA, dTotalS ? +(dTotalA / dTotalS * 100).toFixed(1) : 0, dTotalO, dTotalS ? +(dTotalO / dTotalS * 100).toFixed(1) : 0]);
-                var wsDept = XLSX.utils.aoa_to_sheet(deptRows);
-                XLSX.utils.book_append_sheet(wb, wsDept, 'By Department');
+                var svcLocKeys = Object.keys(svcExportMap).sort();
+                for (var slk = 0; slk < svcLocKeys.length; slk++) {
+                    var svcLocName = svcLocKeys[slk];
+                    var svcMap = svcExportMap[svcLocName];
+                    var svcNames = Object.keys(svcMap).sort(function(a, b) { return svcMap[b].count - svcMap[a].count; });
+                    for (var snk = 0; snk < svcNames.length; snk++) {
+                        var sn = svcNames[snk];
+                        servicesRows.push([svcLocName, sn, svcMap[sn].count, Object.keys(svcMap[sn].students).length]);
+                    }
+                }
             }
+            var wsSvc = XLSX.utils.aoa_to_sheet(servicesRows);
+            XLSX.utils.book_append_sheet(wb, wsSvc, 'Services');
 
-            // --- Department & Major sheet ---
-            if (filteredData && filteredData.length > 0) {
-                var majorCol = findColumn(Object.keys(filteredData[0]), ['Major', 'Navigate Major']);
-                var deptCol = findColumn(Object.keys(filteredData[0]), ['Student Academic Department', 'Student_Academic_Department', 'Academic Department', 'Department']);
-                if (majorCol && deptCol) {
-                    var dmRows = [['Department', 'Major', 'Total Students', 'Met Assigned Advisor', 'Assigned Advisor Rate', 'Office Appointment', 'Office Appt Rate']];
-                    var dmStats = {};
-                    var advisingStaffExp = idx.advisingStaffByStudent || idx.staffByStudent;
-                    for (var dmi = 0; dmi < filteredData.length; dmi++) {
-                        var dmr = filteredData[dmi];
-                        var dept = dmr[deptCol] || 'Missing Department';
-                        if (String(dept).trim() === '' || String(dept).toLowerCase() === 'n/a' || String(dept).toUpperCase() === 'NONDEGREE') dept = 'Missing Department';
-                        var major = dmr[majorCol] || 'Missing Major';
-                        if (String(major).trim() === '' || String(major).toLowerCase() === 'n/a') major = 'Missing Major';
-                        var dmKey = dept + '|||' + major;
-                        if (!dmStats[dmKey]) dmStats[dmKey] = { dept: dept, major: major, total: 0, assigned: 0, office: 0 };
-                        dmStats[dmKey].total++;
-                        var dmSid = dmr[idx.caseloadCols.studentId];
-                        // Assigned advisor check
-                        var dmMetStaff = advisingStaffExp.get(dmSid);
-                        var dmAssignedStaff = idx.assignedStaffByStudent.get(dmSid);
-                        if (dmMetStaff && dmAssignedStaff) {
-                            for (var dmst of dmAssignedStaff) { if (dmMetStaff.has(dmst)) { dmStats[dmKey].assigned++; break; } }
-                        }
-                        // Office check
-                        var dmOffice = dmr[idx.caseloadCols.office];
-                        var dmOffices = idx.officesByStudent.get(dmSid);
-                        if (dmOffices && dmOffice) {
-                            var dmOL = String(dmOffice).split(';').map(function(o){return normalizeOfficeName(o.trim());}).filter(function(o){return o;});
-                            for (var dmoi = 0; dmoi < dmOL.length; dmoi++) { if (dmOffices.has(dmOL[dmoi])) { dmStats[dmKey].office++; break; } }
-                        }
-                    }
-                    var dmKeys = Object.keys(dmStats).sort();
-                    for (var dmki = 0; dmki < dmKeys.length; dmki++) {
-                        var dms = dmStats[dmKeys[dmki]];
-                        dmRows.push([dms.dept, dms.major, dms.total, dms.assigned, dms.total ? +(dms.assigned / dms.total * 100).toFixed(1) : 0, dms.office, dms.total ? +(dms.office / dms.total * 100).toFixed(1) : 0]);
-                    }
-                    var wsDM = XLSX.utils.aoa_to_sheet(dmRows);
-                    XLSX.utils.book_append_sheet(wb, wsDM, 'By Major');
-                }
-            }
+            // --- Data Dictionary sheet (prepended as first tab) ---
+            var offDictRows = [
+                ['Data Dictionary'],
+                [],
+                ['Semester Date Ranges'],
+                ['Fall', '9/1 to 2/28'],
+                ['Spring', '3/1 to 8/31'],
+                [],
+                ['Any reports generated within the semester are tracking the beginning date through the date listed in the file name.'],
+                [],
+                ['Student Type Definitions'],
+                ['New students', 'Freshmen or Transfer'],
+                ['Continuing students', 'Continuing or Readmit'],
+                ['Total', 'All student types'],
+                [],
+                ['Column Definitions'],
+                ['Students (New, Cont, Total)', 'Number of assigned students'],
+                ['Assigned Appts', 'Raw number of students with an appointment with the assigned advisor'],
+                ['Assigned Rate', 'The percentage of students with an appointment with their assigned advisor'],
+                ['Office Appts', 'The raw number of students with an appointment with any advisor or designated staff in the office'],
+                ['Office Rate', 'The percentage of students with an appointment any advisor or designated staff'],
+                ['Assigned Diff (if provided)', 'The percentage point change from the prior year of students with appointments with their assigned advisor'],
+                ['Office Diff (if provided)', 'The percentage point change from the prior year of students with appointments with any advisor or designated staff'],
+                [],
+                ['Services Tab'],
+                ['', 'The Services tab lists all services offered by an office, and how many appointments listed the service and how many unique students have received the service.']
+            ];
+            var wsOffDict = XLSX.utils.aoa_to_sheet(offDictRows);
+            var wbFinalOff = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wbFinalOff, wsOffDict, 'Data Dictionary');
+            wbFinalOff.Sheets['By Office'] = wb.Sheets['By Office'];
+            wbFinalOff.SheetNames.push('By Office');
+            wbFinalOff.Sheets['Unique vs Shared'] = wb.Sheets['Unique vs Shared'];
+            wbFinalOff.SheetNames.push('Unique vs Shared');
+            wbFinalOff.Sheets['Frequency'] = wb.Sheets['Frequency'];
+            wbFinalOff.SheetNames.push('Frequency');
+            wbFinalOff.Sheets['Services'] = wb.Sheets['Services'];
+            wbFinalOff.SheetNames.push('Services');
 
             var dateParts = getCurrentDateParts();
-            XLSX.writeFile(wb, 'Advising_Office_Report_' + dateParts.mm + '.' + dateParts.dd + '.' + dateParts.yy + '.xlsx');
+            XLSX.writeFile(wbFinalOff, 'Advising_Office_Report_' + dateParts.mm + '.' + dateParts.dd + '.' + dateParts.yy + '.xlsx');
 
         } else if (tabType === 'advisor') {
             // --- By Advisor sheet ---
@@ -7432,11 +7505,11 @@
                 if (prevContAdvCounts) advHeader.push('Cont Diff');
                 advHeader = advHeader.concat(['Total Students', 'Total Assigned Appts', 'Total Rate']);
                 if (hasPrev && prevAdvisorMap2) advHeader.push('Total Diff');
-                advHeader.push('Total Appointments');
-                advHeader.push('Total Appts w/ Assigned');
+                advHeader.push('Appointment volume all');
+                advHeader.push('Appointment volume assigned');
                 if (hasPrev && prevAdvisorMap2) {
-                    advHeader.push('Total Appts Diff');
-                    advHeader.push('Appts w/ Assigned Diff');
+                    advHeader.push('Appointment volume all Diff');
+                    advHeader.push('Appointment volume assigned Diff');
                 }
                 advRows.push(advHeader);
 
@@ -7480,10 +7553,10 @@
             } else if (hasPrev && prevAdvisorMap2) {
                 advRows.push(['Professional Advisor', 'Advising Office',
                     'Current Students', 'Assigned Appointments', 'Assigned Rate',
-                    'Total Appointments (duplicated)', 'Total Appts w/ Assigned', '% Appts w/ Assigned Students',
+                    'Appointment volume all', 'Appointment volume assigned', '% Appts w/ Assigned Students',
                     prevLbl + ' Students', prevLbl + ' Assigned Appointments', prevLbl + ' Assigned Rate',
                     'Assigned Rate Diff',
-                    prevLbl + ' Total Appointments', prevLbl + ' Appts w/ Assigned', 'Total Appts Diff', 'Appts w/ Assigned Diff']);
+                    prevLbl + ' Appointment volume all', prevLbl + ' Appointment volume assigned', 'Appointment volume all Diff', 'Appointment volume assigned Diff']);
                 for (var ai = 0; ai < advisorData.length; ai++) {
                     var a = advisorData[ai];
                     var aRt = +a.assignedRate.toFixed(1);
@@ -7501,7 +7574,7 @@
             } else {
                 advRows.push(['Professional Advisor', 'Advising Office', 'Total Students',
                     'Assigned Appointments (unduplicated)', 'Assigned Rate',
-                    'Total Appointments (duplicated)', 'Total Appts w/ Assigned', '% Appts w/ Assigned Students']);
+                    'Appointment volume all', 'Appointment volume assigned', '% Appts w/ Assigned Students']);
                 for (var ai2 = 0; ai2 < advisorData.length; ai2++) {
                     var a2 = advisorData[ai2];
                     advRows.push([a2.advisor, a2.office || '', a2.totalStudents,
@@ -7558,26 +7631,38 @@
             var wsAdvFreq = XLSX.utils.aoa_to_sheet(advFreqRows);
             XLSX.utils.book_append_sheet(wb, wsAdvFreq, 'Frequency');
 
-            // --- Academic Department sheet ---
-            var deptAnalytics2 = calculateDepartmentAnalytics();
-            if (deptAnalytics2) {
-                var deptRows2 = [['Department', 'Total Students', 'Met Assigned Advisor', 'Assigned Advisor Rate', 'Office Appointment', 'Office Appt Rate']];
-                var deptKeys2 = Object.keys(deptAnalytics2).sort();
-                var dTotalS2 = 0, dTotalA2 = 0, dTotalO2 = 0;
-                for (var di2 = 0; di2 < deptKeys2.length; di2++) {
-                    var dk2 = deptKeys2[di2], ds2 = deptAnalytics2[dk2];
-                    var daRate2 = ds2.totalStudents ? +(ds2.studentsWithAssignedAdvisor / ds2.totalStudents * 100).toFixed(1) : 0;
-                    var doRate2 = ds2.totalStudents ? +(ds2.studentsWithOfficeAppointments / ds2.totalStudents * 100).toFixed(1) : 0;
-                    deptRows2.push([dk2, ds2.totalStudents, ds2.studentsWithAssignedAdvisor || 0, daRate2, ds2.studentsWithOfficeAppointments, doRate2]);
-                    dTotalS2 += ds2.totalStudents; dTotalA2 += (ds2.studentsWithAssignedAdvisor || 0); dTotalO2 += ds2.studentsWithOfficeAppointments;
-                }
-                deptRows2.push(['TOTAL', dTotalS2, dTotalA2, dTotalS2 ? +(dTotalA2 / dTotalS2 * 100).toFixed(1) : 0, dTotalO2, dTotalS2 ? +(dTotalO2 / dTotalS2 * 100).toFixed(1) : 0]);
-                var wsDept2 = XLSX.utils.aoa_to_sheet(deptRows2);
-                XLSX.utils.book_append_sheet(wb, wsDept2, 'By Department');
-            }
+            // --- Data Dictionary sheet (prepended as first tab) ---
+            var advDictRows = [
+                ['Data Dictionary'],
+                [],
+                ['Semester Date Ranges'],
+                ['Fall', '9/1 to 2/28'],
+                ['Spring', '3/1 to 8/31'],
+                [],
+                ['Any reports generated within the semester are tracking the beginning date through the date listed in the file name.'],
+                [],
+                ['Student Type Definitions'],
+                ['New students', 'Freshmen or Transfer'],
+                ['Continuing students', 'Continuing or Readmit'],
+                ['Total', 'All student types'],
+                [],
+                ['Column Definitions'],
+                ['Students (New, Cont, or Total)', 'Number of assigned students'],
+                ['Assigned Appts', 'Raw number of unique assigned students with at least 1 appointment'],
+                ['Rate', 'Percentage of unique students with appointment with their assigned advisor'],
+                ['Appointment volume all', 'Total number of appointments with assigned or unassigned students'],
+                ['Appointment volume assigned', 'Total number of appointments with assigned students']
+            ];
+            var wsAdvDict = XLSX.utils.aoa_to_sheet(advDictRows);
+            var wbFinal = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wbFinal, wsAdvDict, 'Data Dictionary');
+            wbFinal.Sheets['By Advisor'] = wb.Sheets['By Advisor'];
+            wbFinal.SheetNames.push('By Advisor');
+            wbFinal.Sheets['Frequency'] = wb.Sheets['Frequency'];
+            wbFinal.SheetNames.push('Frequency');
 
             var dateParts2 = getCurrentDateParts();
-            XLSX.writeFile(wb, 'Advising_Advisor_Report_' + dateParts2.mm + '.' + dateParts2.dd + '.' + dateParts2.yy + '.xlsx');
+            XLSX.writeFile(wbFinal, 'Advising_Advisor_Report_' + dateParts2.mm + '.' + dateParts2.dd + '.' + dateParts2.yy + '.xlsx');
         }
     } catch (error) {
         console.error('Error exporting Excel:', error);
