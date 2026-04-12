@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 7.5</title>
+    <title>LaGuardia Advising Metrics App - Version 7.6</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -896,7 +896,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 7.5 - Released April 10, 2026</div>
+            <div class="subtitle">Version 7.6 - Released April 11, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -908,6 +908,12 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.6 — April 11, 2026</h4>
+                <p style="margin-bottom: 4px;"><strong>By Office tab — tables replace bar charts</strong> — Three stacked tables (Total, New, Continuing) replace the Assigned Advisor and Office Appointment bar charts. Columns match the Excel export: Office, Students, Assigned Appts, Assigned Rate, Office Appts, Office Rate, plus Assigned Diff and Office Diff when prior semester data is loaded. New and Continuing tables only appear when Student Type data is present.</p>
+                <p style="margin-bottom: 4px;"><strong>Unique vs. Shared — shown by default</strong> — Removed collapsible wrapper; table is now always visible.</p>
+                <p style="margin-bottom: 4px;"><strong>By Advisor tab — table replaces bar chart</strong> — The advisor table is now shown directly in the tab instead of the bar chart. Columns: Professional Advisor, Advising Office, Total Students, Assigned Appointments, Assigned Rate, Appointment volume all, Appointment volume assigned. Table remains sortable.</p>
+                <p style="margin-bottom: 8px;"><strong>Advising Office Report — By Office tab restructured</strong> — Export now shows three separate tables stacked vertically (New, Continuing, Total) instead of one wide table with all columns combined.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.5 — April 10, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>Services tab in Advising Office Report export</strong> — New last tab showing Location → Service breakdown with appointment count and unique student count, matching the in-app Services tab.</p>
@@ -3715,168 +3721,8 @@
         }
         var prevLabelAdv = hasPrevSemester() ? getPrevSemesterLabel() : '';
 
-        // --- Assigned Rate by Advisor chart (grouped by office) ---
+        // --- Build and display advisor table ---
         var tableHTML = '';
-        tableHTML += '<h4 style="margin: 10px 0 8px;">Assigned Advisor Rate by Advisor</h4>';
-        tableHTML += '<p style="margin-bottom: 8px; color: #6c757d; font-size: 13px;"><em>% of each advisor\'s assigned students who met with them, grouped by office.</em></p>';
-
-        // Build merged advisor list: union of current + prev semester, grouped by office
-        var mergedAdvisors = {};  // staffId -> { advisor, office, rate, count, prevRate }
-        for (var mai = 0; mai < advisorArray.length; mai++) {
-            var ma = advisorArray[mai];
-            mergedAdvisors[ma.staffId] = {
-                advisor: ma.advisor,
-                office: ma.office || 'Unknown',
-                rate: ma.assignedRate.toFixed(1),
-                count: ma.totalStudents,
-                prevRate: null,
-                prevCount: null
-            };
-        }
-        // Merge previous semester advisors
-        if (prevAdvisorMap) {
-            // We need advisor names/offices for prev-only advisors — get from prev staffIdToInfo
-            // For advisors in both, just set prevRate
-            for (var prevStaffId in prevAdvisorMap) {
-                var pAdv = prevAdvisorMap[prevStaffId];
-                if (mergedAdvisors[prevStaffId]) {
-                    mergedAdvisors[prevStaffId].prevRate = pAdv.assignedRate.toFixed(1);
-                    mergedAdvisors[prevStaffId].prevCount = pAdv.totalStudents;
-                } else {
-                    // Prev-only advisor
-                    mergedAdvisors[prevStaffId] = {
-                        advisor: pAdv.name || prevStaffId,
-                        office: pAdv.office || 'Unknown',
-                        rate: null,
-                        count: null,
-                        prevRate: pAdv.assignedRate.toFixed(1),
-                        prevCount: pAdv.totalStudents
-                    };
-                }
-            }
-        }
-        // Sort merged advisors by office then name
-        var mergedKeys = Object.keys(mergedAdvisors).sort(function(a, b) {
-            var oa = (mergedAdvisors[a].office || '').toLowerCase();
-            var ob = (mergedAdvisors[b].office || '').toLowerCase();
-            if (oa < ob) return -1;
-            if (oa > ob) return 1;
-            var na = (mergedAdvisors[a].advisor || '').toLowerCase();
-            var nb = (mergedAdvisors[b].advisor || '').toLowerCase();
-            return na.localeCompare(nb);
-        });
-
-        var advChartItems = [];
-        var advCurOffice = '';
-        for (var mki = 0; mki < mergedKeys.length; mki++) {
-            var mk = mergedKeys[mki], md = mergedAdvisors[mk];
-            if (md.office !== advCurOffice) {
-                advCurOffice = md.office;
-                advChartItems.push({ officeHeader: advCurOffice });
-            }
-            advChartItems.push({
-                label: md.advisor,
-                rate: md.rate !== null ? md.rate : '0.0',
-                count: md.count !== null ? md.count : '',
-                prevRate: md.prevRate,
-                prevCount: md.prevCount
-            });
-        }
-        // Build student type advisor data
-        var hasStudentTypeAdv = hasStudentTypeColumn(idx);
-        if (hasStudentTypeAdv) {
-            var newDataAdv = filterByStudentTypeGroup(dataToUse, idx, 'New');
-            var contDataAdv = filterByStudentTypeGroup(dataToUse, idx, 'Continuing');
-
-            function buildAdvisorChartItemsForGroup(groupData, prevGroupData) {
-                var groupStaffToStudents = new Map();
-                for (var gi = 0; gi < groupData.length; gi++) {
-                    var gr = groupData[gi];
-                    var gsid = gr[caseloadCols.studentId];
-                    if (!gsid) continue;
-                    var gStaffIds = parseList(gr[caseloadCols.staffId]);
-                    for (var gsi = 0; gsi < gStaffIds.length; gsi++) {
-                        var gStaffId = normalizeId(gStaffIds[gsi]);
-                        if (!gStaffId) continue;
-                        if (!groupStaffToStudents.has(gStaffId)) groupStaffToStudents.set(gStaffId, new Set());
-                        groupStaffToStudents.get(gStaffId).add(gsid);
-                    }
-                }
-                // Build prev semester stats for this group
-                var prevGroupStaff = new Map();
-                if (prevGroupData) {
-                    var prevCC = prevIdx.caseloadCols;
-                    var prevAA = prevIdx.advisingApptsByStudent || prevIdx.apptsByStudent;
-                    for (var pgi = 0; pgi < prevGroupData.length; pgi++) {
-                        var pgr = prevGroupData[pgi];
-                        var pgsid = pgr[prevCC.studentId];
-                        if (!pgsid) continue;
-                        var pgStaffIds = parseList(pgr[prevCC.staffId]);
-                        for (var pgsi = 0; pgsi < pgStaffIds.length; pgsi++) {
-                            var pgStaffId = normalizeId(pgStaffIds[pgsi]);
-                            if (!pgStaffId) continue;
-                            if (!prevGroupStaff.has(pgStaffId)) prevGroupStaff.set(pgStaffId, new Set());
-                            prevGroupStaff.get(pgStaffId).add(pgsid);
-                        }
-                    }
-                }
-
-                var groupItems = [];
-                var gCurOffice = '';
-                for (var gmki = 0; gmki < mergedKeys.length; gmki++) {
-                    var gmk = mergedKeys[gmki], gmd = mergedAdvisors[gmk];
-                    if (gmd.office !== gCurOffice) {
-                        gCurOffice = gmd.office;
-                        groupItems.push({ officeHeader: gCurOffice });
-                    }
-                    var gStudents = groupStaffToStudents.get(gmk);
-                    var gTotal = gStudents ? gStudents.size : 0;
-                    var gAssigned = 0;
-                    if (gStudents) {
-                        gStudents.forEach(function(sid) {
-                            var appts = advisingApptsByStudent.get(sid);
-                            if (!appts) return;
-                            for (var ai = 0; ai < appts.length; ai++) {
-                                if (normalizeId(appts[ai][apptCols.staffId]) === gmk) { gAssigned++; break; }
-                            }
-                        });
-                    }
-                    var gRate = gTotal ? ((gAssigned / gTotal) * 100).toFixed(1) : '0.0';
-                    // Prev semester rate for this group+advisor
-                    var gPrevRate = null;
-                    if (prevGroupData && prevGroupStaff.has(gmk)) {
-                        var prevSids = prevGroupStaff.get(gmk);
-                        var prevTotal = prevSids.size;
-                        var prevAssigned = 0;
-                        var prevAAppts = prevIdx.advisingApptsByStudent || prevIdx.apptsByStudent;
-                        prevSids.forEach(function(sid) {
-                            var appts = prevAAppts.get(sid);
-                            if (!appts) return;
-                            for (var ai = 0; ai < appts.length; ai++) {
-                                if (normalizeId(appts[ai][prevIdx.apptCols.staffId]) === gmk) { prevAssigned++; break; }
-                            }
-                        });
-                        gPrevRate = prevTotal ? ((prevAssigned / prevTotal) * 100).toFixed(1) : null;
-                    }
-                    groupItems.push({ label: gmd.advisor, rate: gRate, count: gTotal, prevRate: gPrevRate });
-                }
-                return groupItems;
-            }
-
-            // Compute prev semester student type data for advisors
-            var prevNewDataAdv = null, prevContDataAdv = null;
-            if (hasPrevSemester() && prevFilteredData && prevFilteredData.length > 0 && hasStudentTypeColumn(prevIdx)) {
-                prevNewDataAdv = filterByStudentTypeGroup(prevFilteredData, prevIdx, 'New');
-                prevContDataAdv = filterByStudentTypeGroup(prevFilteredData, prevIdx, 'Continuing');
-            }
-            var newAdvItems = buildAdvisorChartItemsForGroup(newDataAdv, prevNewDataAdv);
-            var contAdvItems = buildAdvisorChartItemsForGroup(contDataAdv, prevContDataAdv);
-            tableHTML += buildGroupedBarChart(advChartItems, newAdvItems, contAdvItems);
-        } else {
-            tableHTML += buildHorizontalBarChart(advChartItems, { prevLabel: prevLabelAdv });
-        }
-
-        // --- Build table HTML - moved to export only ---
         var advisorTableContent = '<table class="data-table" id="advisor-table">' +
             '<thead><tr>' +
             '<th class="sortable" onclick="sortAdvisorTable(0, \'string\')">Professional Advisor</th>' +
@@ -3884,14 +3730,13 @@
             '<th class="sortable" onclick="sortAdvisorTable(2, \'number\')">Total Students</th>' +
             '<th class="sortable" onclick="sortAdvisorTable(3, \'number\')">Assigned Appointments (unduplicated)</th>' +
             '<th class="sortable" onclick="sortAdvisorTable(4, \'number\')">Assigned Rate</th>' +
-            '<th class="sortable" onclick="sortAdvisorTable(5, \'number\')">Total Appointments (duplicated)</th>' +
-            '<th class="sortable" onclick="sortAdvisorTable(6, \'number\')">% Appointments w/ Assigned Students</th>' +
+            '<th class="sortable" onclick="sortAdvisorTable(5, \'number\')">Appointment volume all</th>' +
+            '<th class="sortable" onclick="sortAdvisorTable(6, \'number\')">Appointment volume assigned</th>' +
             '</tr></thead><tbody>';
 
         for (var iArr = 0; iArr < advisorArray.length; iArr++) {
             var r = advisorArray[iArr];
             var assignedRateDisplay = r.assignedRate.toFixed(1);
-            var assignedPctDisplay = r.assignedPercentage.toFixed(1);
 
             advisorTableContent += '<tr>' +
                 '<td>' + r.advisor + '</td>' +
@@ -3899,18 +3744,18 @@
                 '<td>' + r.totalStudents + '</td>' +
                 '<td>' + r.assignedAppointments + '</td>' +
                 '<td>' + assignedRateDisplay + '%</td>' +
-                '<td>' + r.totalAppointments + '</td>' +
-                '<td>' + assignedPctDisplay + '%</td>' +
+                '<td>' + (r.totalAppointments || 0) + '</td>' +
+                '<td>' + (r.assignedAppointmentsDuplicated || 0) + '</td>' +
                 '</tr>';
         }
-
         advisorTableContent += '</tbody></table>';
-        // Table moved to export only
+        tableHTML += advisorTableContent;
 
         // --- Appointment Frequency by Advisor ---
         tableHTML += '<h4 style="margin: 24px 0 8px;">📊 Appointment Frequency by Advisor</h4>';
         tableHTML += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>Distribution of how many advising appointments each assigned student had with their specific assigned advisor.</em></p>';
         var advisorFreq = computeAdvisorFrequency(filteredData, filteredAppointmentData, idx, advisorArray);
+        var hasStudentTypeAdv = hasStudentTypeColumn(idx);
         if (hasStudentTypeAdv) {
             var newAdvFreq = computeAdvisorFrequency(filterByStudentTypeGroup(filteredData, idx, 'New'), filteredAppointmentData, idx, advisorArray);
             var contAdvFreq = computeAdvisorFrequency(filterByStudentTypeGroup(filteredData, idx, 'Continuing'), filteredAppointmentData, idx, advisorArray);
@@ -5168,130 +5013,84 @@
             }
         }
 
-        // === ASSIGNED ADVISOR RATE BAR CHART ===
-        html += '<h4 style="margin: 10px 0 8px;">Assigned Advisor Appointment Rate by Office</h4>';
-        html += '<p style="margin-bottom: 8px; color: #6c757d; font-size: 13px;"><em>% of assigned students who met with their assigned advisor at each office.</em></p>';
         var gS = uniqueStudents.size;
+        var gAssignedRate = gS ? ((grandTotalAssignedAdvisor / gS) * 100).toFixed(1) : '0.0';
+        var gOfficeRate = gS ? ((grandTotalOfficeAppt / gS) * 100).toFixed(1) : '0.0';
+        var prevAllStats = prevOfficeResult ? prevOfficeResult.officeStats : null;
+        var prevAllGS = prevOfficeResult ? prevOfficeResult.uniqueStudents.size : 0;
+        var prevAllGTAssigned = prevOfficeResult ? prevOfficeResult.grandTotalAssignedAdvisor : 0;
+        var prevAllGTOffice = prevOfficeResult ? prevOfficeResult.grandTotalOfficeAppt : 0;
 
-        function buildOfficeChartItems(stats, grandAssigned, grandSize, metricType, prevStats, prevGrandAssigned, prevGrandSize) {
-            var items = [];
-            for (var ci = 0; ci < officeKeys.length; ci++) {
-                var off = officeKeys[ci], st = stats ? stats[off] : null;
-                var total = st ? st.totalStudents : 0;
-                var count = st ? (metricType === 'assigned' ? st.assignedAdvisorCount : st.officeAppointments) : 0;
-                var rate = total ? ((count / total) * 100).toFixed(1) : '0.0';
-                var prevRate = null;
-                if (prevStats) {
-                    var pSt = prevStats[off];
-                    if (pSt && pSt.totalStudents) {
-                        var pCount = metricType === 'assigned' ? pSt.assignedAdvisorCount : pSt.officeAppointments;
-                        prevRate = ((pCount / pSt.totalStudents) * 100).toFixed(1);
-                    }
+        // Helper: build one office stats table for in-app display
+        function buildOfficeStatsTable(label, stats, grandAssigned, grandOffice, grandSize, prevStats, prevGTAssigned, prevGTOffice, prevGrandSize) {
+            var hasPrev = !!(prevStats && prevGrandSize);
+            var t = '';
+            t += '<h4 style="margin: 20px 0 6px; color: #2c3e50;">' + label + '</h4>';
+            t += '<p style="margin-bottom: 10px; color: #6c757d; font-size: 13px;"><em>Office rows include all students assigned to that office, including students also assigned to other offices. Row totals may exceed the grand total, which counts each student only once.</em></p>';
+            t += '<table class="data-table"><thead><tr>';
+            t += '<th>Advising Office</th><th>Students</th><th>Assigned Appts</th><th>Assigned Rate</th><th>Office Appts</th><th>Office Rate</th>';
+            if (hasPrev) t += '<th>Assigned Diff</th><th>Office Diff</th>';
+            t += '</tr></thead><tbody>';
+            for (var ti = 0; ti < officeKeys.length; ti++) {
+                var tOff = officeKeys[ti];
+                var tSt = stats ? stats[tOff] : null;
+                if (!tSt) continue;
+                var tAR = tSt.totalStudents ? ((tSt.assignedAdvisorCount / tSt.totalStudents) * 100).toFixed(1) : '0.0';
+                var tOR = tSt.totalStudents ? ((tSt.officeAppointments / tSt.totalStudents) * 100).toFixed(1) : '0.0';
+                t += '<tr>';
+                t += '<td>' + tOff + '</td>';
+                t += '<td>' + tSt.totalStudents + '</td>';
+                t += '<td>' + tSt.assignedAdvisorCount + '</td>';
+                t += '<td>' + tAR + '%</td>';
+                t += '<td>' + tSt.officeAppointments + '</td>';
+                t += '<td>' + tOR + '%</td>';
+                if (hasPrev) {
+                    var pSt = prevStats[tOff] || null;
+                    var pAR = pSt && pSt.totalStudents ? ((pSt.assignedAdvisorCount / pSt.totalStudents) * 100).toFixed(1) : null;
+                    var pOR = pSt && pSt.totalStudents ? ((pSt.officeAppointments / pSt.totalStudents) * 100).toFixed(1) : null;
+                    t += '<td>' + (pAR !== null ? (+(tAR - pAR).toFixed(1) > 0 ? '+' : '') + (+(tAR - pAR).toFixed(1)) + 'pp' : '—') + '</td>';
+                    t += '<td>' + (pOR !== null ? (+(tOR - pOR).toFixed(1) > 0 ? '+' : '') + (+(tOR - pOR).toFixed(1)) + 'pp' : '—') + '</td>';
                 }
-                items.push({ label: off, rate: rate, count: total, prevRate: prevRate });
+                t += '</tr>';
             }
-            items.push({ divider: true });
-            var gRate = grandSize ? ((grandAssigned / grandSize) * 100).toFixed(1) : '0.0';
-            var gPrevRate = prevGrandSize ? ((prevGrandAssigned / prevGrandSize) * 100).toFixed(1) : null;
-            items.push({ label: 'GRAND TOTAL<br><span style="font-weight:400;font-size:10px;color:#888;">(Unduplicated)</span>', rate: gRate, count: grandSize, isTotal: true, prevRate: gPrevRate });
-            return items;
-        }
-
-        if (hasStudentType) {
-            var prevAllStats = prevOfficeResult ? prevOfficeResult.officeStats : null;
-            var prevAllGTAssigned = prevOfficeResult ? prevOfficeResult.grandTotalAssignedAdvisor : 0;
-            var prevAllGTOffice = prevOfficeResult ? prevOfficeResult.grandTotalOfficeAppt : 0;
-            var prevAllGS = prevOfficeResult ? prevOfficeResult.uniqueStudents.size : 0;
-            var allAssignedItems = buildOfficeChartItems(officeStats, grandTotalAssignedAdvisor, gS, 'assigned', prevAllStats, prevAllGTAssigned, prevAllGS);
-            var newAssignedItems = buildOfficeChartItems(newOfficeStats, newGrandTotalAssigned, newUniqueSize, 'assigned', prevNewOfficeStats, prevNewGTAssigned, prevNewUniqueSize);
-            var contAssignedItems = buildOfficeChartItems(contOfficeStats, contGrandTotalAssigned, contUniqueSize, 'assigned', prevContOfficeStats, prevContGTAssigned, prevContUniqueSize);
-            html += buildGroupedBarChart(allAssignedItems, newAssignedItems, contAssignedItems);
-        } else {
-            var assignedChartItems = [];
-            for (var aci = 0; aci < officeKeys.length; aci++) {
-                var acOff = officeKeys[aci], acSt = officeStats[acOff];
-                var acRate = acSt.totalStudents ? ((acSt.assignedAdvisorCount / acSt.totalStudents) * 100).toFixed(1) : '0.0';
-                var acPrevSt = prevOfficeResult && prevOfficeResult.officeStats[acOff] ? prevOfficeResult.officeStats[acOff] : null;
-                var acPrevRate = acPrevSt && acPrevSt.totalStudents ? ((acPrevSt.assignedAdvisorCount / acPrevSt.totalStudents) * 100).toFixed(1) : null;
-                assignedChartItems.push({ label: acOff, rate: acRate, count: acSt.totalStudents, prevRate: acPrevRate, prevCount: acPrevSt ? acPrevSt.totalStudents : null });
+            // Grand total row
+            var gtAR = grandSize ? ((grandAssigned / grandSize) * 100).toFixed(1) : '0.0';
+            var gtOR = grandSize ? ((grandOffice / grandSize) * 100).toFixed(1) : '0.0';
+            t += '<tr class="grand-total-row">';
+            t += '<td><strong>GRAND TOTAL (Unduplicated)</strong></td>';
+            t += '<td><strong>' + grandSize + '</strong></td>';
+            t += '<td><strong>' + grandAssigned + '</strong></td>';
+            t += '<td><strong>' + gtAR + '%</strong></td>';
+            t += '<td><strong>' + grandOffice + '</strong></td>';
+            t += '<td><strong>' + gtOR + '%</strong></td>';
+            if (hasPrev) {
+                var pgAR = prevGrandSize ? ((prevGTAssigned / prevGrandSize) * 100).toFixed(1) : null;
+                var pgOR = prevGrandSize ? ((prevGTOffice / prevGrandSize) * 100).toFixed(1) : null;
+                t += '<td><strong>' + (pgAR !== null ? (+(gtAR - pgAR).toFixed(1) > 0 ? '+' : '') + (+(gtAR - pgAR).toFixed(1)) + 'pp' : '—') + '</strong></td>';
+                t += '<td><strong>' + (pgOR !== null ? (+(gtOR - pgOR).toFixed(1) > 0 ? '+' : '') + (+(gtOR - pgOR).toFixed(1)) + 'pp' : '—') + '</strong></td>';
             }
-            assignedChartItems.push({ divider: true });
-            var gAssignedRate = gS ? ((grandTotalAssignedAdvisor / gS) * 100).toFixed(1) : '0.0';
-            var prevGS = prevOfficeResult ? prevOfficeResult.uniqueStudents.size : null;
-            var prevGAssignedRate = prevGS ? ((prevOfficeResult.grandTotalAssignedAdvisor / prevGS) * 100).toFixed(1) : null;
-            assignedChartItems.push({ label: 'GRAND TOTAL<br><span style="font-weight:400;font-size:10px;color:#888;">(Unduplicated)</span>', rate: gAssignedRate, count: gS, isTotal: true, prevRate: prevGAssignedRate, prevCount: prevGS });
-            html += buildHorizontalBarChart(assignedChartItems, { prevLabel: prevLabel });
+            t += '</tr>';
+            t += '</tbody></table>';
+            return t;
         }
 
-        // === OFFICE APPOINTMENT RATE BAR CHART ===
-        html += '<h4 style="margin: 24px 0 8px;">Office Appointment Rate by Office</h4>';
-        html += '<p style="margin-bottom: 8px; color: #6c757d; font-size: 13px;"><em>% of assigned students who had any appointment at their assigned office.</em></p>';
+        // === TOTAL TABLE ===
+        html += buildOfficeStatsTable('Total', officeStats, grandTotalAssignedAdvisor, grandTotalOfficeAppt, gS, prevAllStats, prevAllGTAssigned, prevAllGTOffice, prevAllGS);
 
-        if (hasStudentType) {
-            var allOfficeItems = buildOfficeChartItems(officeStats, grandTotalOfficeAppt, gS, 'office', prevAllStats, prevAllGTOffice, prevAllGS);
-            var newOfficeItems = buildOfficeChartItems(newOfficeStats, newGrandTotalOffice, newUniqueSize, 'office', prevNewOfficeStats, prevNewGTOffice, prevNewUniqueSize);
-            var contOfficeItems = buildOfficeChartItems(contOfficeStats, contGrandTotalOffice, contUniqueSize, 'office', prevContOfficeStats, prevContGTOffice, prevContUniqueSize);
-            html += buildGroupedBarChart(allOfficeItems, newOfficeItems, contOfficeItems);
-        } else {
-            var officeChartItems = [];
-            for (var oci = 0; oci < officeKeys.length; oci++) {
-                var ocOff = officeKeys[oci], ocSt = officeStats[ocOff];
-                var ocRate = ocSt.totalStudents ? ((ocSt.officeAppointments / ocSt.totalStudents) * 100).toFixed(1) : '0.0';
-                var ocPrevSt = prevOfficeResult && prevOfficeResult.officeStats[ocOff] ? prevOfficeResult.officeStats[ocOff] : null;
-                var ocPrevRate = ocPrevSt && ocPrevSt.totalStudents ? ((ocPrevSt.officeAppointments / ocPrevSt.totalStudents) * 100).toFixed(1) : null;
-                officeChartItems.push({ label: ocOff, rate: ocRate, count: ocSt.totalStudents, prevRate: ocPrevRate, prevCount: ocPrevSt ? ocPrevSt.totalStudents : null });
-            }
-            officeChartItems.push({ divider: true });
-            var prevGS = prevOfficeResult ? prevOfficeResult.uniqueStudents.size : null;
-            var gOfficeRate = gS ? ((grandTotalOfficeAppt / gS) * 100).toFixed(1) : '0.0';
-            var prevGOfficeRate = prevGS ? ((prevOfficeResult.grandTotalOfficeAppt / prevGS) * 100).toFixed(1) : null;
-            officeChartItems.push({ label: 'GRAND TOTAL<br><span style="font-weight:400;font-size:10px;color:#888;">(Unduplicated)</span>', rate: gOfficeRate, count: gS, isTotal: true, prevRate: prevGOfficeRate, prevCount: prevGS });
-            html += buildHorizontalBarChart(officeChartItems, { showLegend: false, prevLabel: prevLabel });
+        // === NEW TABLE ===
+        if (hasStudentType && newOfficeStats) {
+            var prevNewStats = prevNewOfficeStats || null;
+            html += buildOfficeStatsTable('New', newOfficeStats, newGrandTotalAssigned, newGrandTotalOffice, newUniqueSize, prevNewStats, prevNewGTAssigned, prevNewGTOffice, prevNewUniqueSize);
         }
 
-        // === MAIN TABLE - moved to export ===
-        // Tables are now in the Excel export only
-        var mainTableHtml = ''; // kept for export data computation
-        var _skipMainTableDisplay = true;
-        mainTableHtml += '<p style="margin-bottom: 15px; color: #6c757d; font-size: 13px;"><em>Note: Office rows include all students assigned to that office, including students who may also be assigned to other offices. As a result, office row totals may sum to more than the grand total, which counts each student only once.</em></p>';
-        mainTableHtml += '<table class="data-table"><thead><tr>';
-        mainTableHtml += '<th>Advising Office</th><th>Total Students</th><th>Unique</th><th>Shared</th>';
-        mainTableHtml += '<th>Assigned Advisor Appts</th><th>Rate</th>';
-        mainTableHtml += '<th>Office Appt</th><th>Rate</th>';
-        mainTableHtml += '</tr></thead><tbody>';
-
-        for (var k = 0; k < officeKeys.length; k++) {
-            var off = officeKeys[k], st = officeStats[off];
-            var assignedRate = st.totalStudents ? ((st.assignedAdvisorCount / st.totalStudents) * 100).toFixed(1) : '0.0';
-            var officeRate = st.totalStudents ? ((st.officeAppointments / st.totalStudents) * 100).toFixed(1) : '0.0';
-
-            mainTableHtml += '<tr>';
-            mainTableHtml += '<td>' + off + '</td>';
-            mainTableHtml += '<td>' + st.totalStudents + '</td>';
-            mainTableHtml += '<td>' + st.uniqueStudents + '</td>';
-            mainTableHtml += '<td>' + st.sharedStudents + '</td>';
-            mainTableHtml += '<td>' + st.assignedAdvisorCount + '</td>';
-            mainTableHtml += '<td>' + assignedRate + '%</td>';
-            mainTableHtml += '<td>' + st.officeAppointments + '</td>';
-            mainTableHtml += '<td>' + officeRate + '%</td>';
-            mainTableHtml += '</tr>';
+        // === CONTINUING TABLE ===
+        if (hasStudentType && contOfficeStats) {
+            var prevContStats = prevContOfficeStats || null;
+            html += buildOfficeStatsTable('Continuing', contOfficeStats, contGrandTotalAssigned, contGrandTotalOffice, contUniqueSize, prevContStats, prevContGTAssigned, prevContGTOffice, prevContUniqueSize);
         }
-        
-        // Grand Total Row
-        mainTableHtml += '<tr class="grand-total-row">';
-        mainTableHtml += '<td><strong>GRAND TOTAL (Unduplicated)</strong></td>';
-        mainTableHtml += '<td><strong>' + gS + '</strong></td>';
-        mainTableHtml += '<td><strong>' + grandTotalUniqueOnly + '</strong></td>';
-        mainTableHtml += '<td><strong>' + grandTotalSharedOnly + '</strong></td>';
-        mainTableHtml += '<td><strong>' + grandTotalAssignedAdvisor + '</strong></td>';
-        mainTableHtml += '<td><strong>' + gAssignedRate + '%</strong></td>';
-        mainTableHtml += '<td><strong>' + grandTotalOfficeAppt + '</strong></td>';
-        mainTableHtml += '<td><strong>' + gOfficeRate + '%</strong></td>';
-        mainTableHtml += '</tr>';
-        mainTableHtml += '</tbody></table>';
-        if (!_skipMainTableDisplay) html += wrapCollapsible('Show Analysis by Office Table', mainTableHtml);
 
-        // === UNIQUE VS SHARED TABLE (collapsible) ===
+        // === UNIQUE VS SHARED TABLE (shown by default) ===
+        html += '<h4 style="margin: 28px 0 6px; color: #2c3e50;">Unique vs. Shared Students</h4>';
         var usTableHtml = '<table class="data-table"><thead><tr>';
         usTableHtml += '<th>Advising Office</th>';
         usTableHtml += '<th>Unique Students</th><th>Unique Assigned Rate</th>';
@@ -5319,7 +5118,7 @@
         usTableHtml += '<td><strong>' + gtSharedRate + '%</strong></td>';
         usTableHtml += '</tr>';
         usTableHtml += '</tbody></table>';
-        html += wrapCollapsible('Show Unique vs. Shared Breakdown Table', usTableHtml);
+        html += usTableHtml;
 
         // --- Multi-Office Breakdown Section - moved to export ---
         var _multiOfficeExportData = multi; // save for export
@@ -6178,13 +5977,13 @@
                 aVal = a.assignedRate || 0;
                 bVal = b.assignedRate || 0;
                 break;
-            case 5: // Total Appointments (duplicated) (number)
+            case 5: // Appointment volume all (number)
                 aVal = a.totalAppointments || 0;
                 bVal = b.totalAppointments || 0;
                 break;
-            case 6: // % Appointments w/ Assigned Students (number)
-                aVal = a.assignedPercentage || 0;
-                bVal = b.assignedPercentage || 0;
+            case 6: // Appointment volume assigned (number)
+                aVal = a.assignedAppointmentsDuplicated || 0;
+                bVal = b.assignedAppointmentsDuplicated || 0;
                 break;
             default:
                 aVal = 0;
@@ -6225,7 +6024,7 @@
             '<td>' + (r.assignedAppointments || 0) + '</td>' +
             '<td>' + assignedRateValue.toFixed(1) + '%</td>' +
             '<td>' + (r.totalAppointments || 0) + '</td>' +
-            '<td>' + assignedPctValue.toFixed(1) + '%</td>';
+            '<td>' + (r.assignedAppointmentsDuplicated || 0) + '</td>';
     }
 }
 
@@ -7142,110 +6941,95 @@
                 prevContOffResExp = computeOfficeStats(prevContDataExp, prevIdx);
             }
 
+            function r(n, d) { return d ? +(n / d * 100).toFixed(1) : 0; }
+            function diffVal(cur, prev) { return prev !== null && prev !== undefined ? +(cur - prev).toFixed(1) : ''; }
+
+            // Helper: build one stacked table block for the By Office sheet
+            function buildOfficeExportBlock(label, stats, grandAssigned, grandOffice, grandSize, prevStats, prevGTAssigned, prevGTOffice, prevGrandSize) {
+                var hasPrevBlock = !!(prevStats && prevGrandSize);
+                var blockRows = [];
+                blockRows.push([label]);
+                var hdr = ['Advising Office', 'Students', 'Assigned Appts', 'Assigned Rate', 'Office Appts', 'Office Rate'];
+                if (hasPrevBlock) hdr = hdr.concat(['Assigned Diff', 'Office Diff']);
+                blockRows.push(hdr);
+                for (var bi = 0; bi < oKeys.length; bi++) {
+                    var bo = oKeys[bi];
+                    var bs = stats ? (stats[bo] || { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 }) : { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 };
+                    var bAR = r(bs.assignedAdvisorCount, bs.totalStudents);
+                    var bOR = r(bs.officeAppointments, bs.totalStudents);
+                    var bRow = [bo, bs.totalStudents, bs.assignedAdvisorCount, bAR, bs.officeAppointments, bOR];
+                    if (hasPrevBlock) {
+                        var pbs = prevStats[bo] || { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 };
+                        bRow.push(diffVal(bAR, r(pbs.assignedAdvisorCount, pbs.totalStudents)));
+                        bRow.push(diffVal(bOR, r(pbs.officeAppointments, pbs.totalStudents)));
+                    }
+                    blockRows.push(bRow);
+                }
+                var gtAR = r(grandAssigned, grandSize);
+                var gtOR = r(grandOffice, grandSize);
+                var gtRow = ['GRAND TOTAL (Unduplicated)', grandSize, grandAssigned, gtAR, grandOffice, gtOR];
+                if (hasPrevBlock) {
+                    var pgAR = r(prevGTAssigned, prevGrandSize);
+                    var pgOR = r(prevGTOffice, prevGrandSize);
+                    gtRow.push(diffVal(gtAR, pgAR));
+                    gtRow.push(diffVal(gtOR, pgOR));
+                }
+                blockRows.push(gtRow);
+                return blockRows;
+            }
+
             if (hasSTExport) {
-                var headerRow = ['Advising Office',
-                    'New Students', 'New Assigned Appts', 'New Assigned Rate', 'New Office Appts', 'New Office Rate'];
-                if (prevNewOffResExp) headerRow = headerRow.concat(['New Assigned Diff', 'New Office Diff']);
-                headerRow = headerRow.concat(['Continuing Students', 'Cont Assigned Appts', 'Cont Assigned Rate', 'Cont Office Appts', 'Cont Office Rate']);
-                if (prevContOffResExp) headerRow = headerRow.concat(['Cont Assigned Diff', 'Cont Office Diff']);
-                headerRow = headerRow.concat(['Total Students', 'Total Assigned Appts', 'Total Assigned Rate', 'Total Office Appts', 'Total Office Rate']);
-                if (hasPrev && prevOffRes) headerRow = headerRow.concat(['Total Assigned Diff', 'Total Office Diff']);
-                officeRows.push(headerRow);
+                var ngs = newOffRes.uniqueStudents.size;
+                var cgs = contOffRes.uniqueStudents.size;
+                var tgs = ed.uniqueStudents.size;
+                var prevNGS = prevNewOffResExp ? prevNewOffResExp.uniqueStudents.size : 0;
+                var prevCGS = prevContOffResExp ? prevContOffResExp.uniqueStudents.size : 0;
+                var prevTGS = prevOffRes ? prevOffRes.uniqueStudents.size : 0;
 
-                function r(n, d) { return d ? +(n / d * 100).toFixed(1) : 0; }
-                function diffVal(cur, prev) { return prev !== null ? +(cur - prev).toFixed(1) : ''; }
+                // New table
+                var newBlock = buildOfficeExportBlock('New',
+                    newOffRes.officeStats, newOffRes.grandTotalAssignedAdvisor, newOffRes.grandTotalOfficeAppt, ngs,
+                    prevNewOffResExp ? prevNewOffResExp.officeStats : null,
+                    prevNewOffResExp ? prevNewOffResExp.grandTotalAssignedAdvisor : 0,
+                    prevNewOffResExp ? prevNewOffResExp.grandTotalOfficeAppt : 0,
+                    prevNGS);
+                for (var nbi = 0; nbi < newBlock.length; nbi++) officeRows.push(newBlock[nbi]);
+                officeRows.push([]);
 
-                for (var oi = 0; oi < oKeys.length; oi++) {
-                    var o = oKeys[oi];
-                    var s = oStats[o];
-                    var ns = newOffRes.officeStats[o] || { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 };
-                    var cs = contOffRes.officeStats[o] || { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 };
+                // Continuing table
+                var contBlock = buildOfficeExportBlock('Continuing',
+                    contOffRes.officeStats, contOffRes.grandTotalAssignedAdvisor, contOffRes.grandTotalOfficeAppt, cgs,
+                    prevContOffResExp ? prevContOffResExp.officeStats : null,
+                    prevContOffResExp ? prevContOffResExp.grandTotalAssignedAdvisor : 0,
+                    prevContOffResExp ? prevContOffResExp.grandTotalOfficeAppt : 0,
+                    prevCGS);
+                for (var cbi = 0; cbi < contBlock.length; cbi++) officeRows.push(contBlock[cbi]);
+                officeRows.push([]);
 
-                    var nAR = r(ns.assignedAdvisorCount, ns.totalStudents);
-                    var nOR = r(ns.officeAppointments, ns.totalStudents);
-                    var cAR = r(cs.assignedAdvisorCount, cs.totalStudents);
-                    var cOR = r(cs.officeAppointments, cs.totalStudents);
-                    var tAR = r(s.assignedAdvisorCount, s.totalStudents);
-                    var tOR = r(s.officeAppointments, s.totalStudents);
+                // Total table
+                var totalBlock = buildOfficeExportBlock('Total',
+                    oStats, ed.grandTotalAssignedAdvisor, ed.grandTotalOfficeAppt, tgs,
+                    prevOffRes ? prevOffRes.officeStats : null,
+                    prevOffRes ? prevOffRes.grandTotalAssignedAdvisor : 0,
+                    prevOffRes ? prevOffRes.grandTotalOfficeAppt : 0,
+                    prevTGS);
+                for (var tbi = 0; tbi < totalBlock.length; tbi++) officeRows.push(totalBlock[tbi]);
 
-                    var row = [o, ns.totalStudents, ns.assignedAdvisorCount, nAR, ns.officeAppointments, nOR];
-                    if (prevNewOffResExp) {
-                        var pns = prevNewOffResExp.officeStats[o] || { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 };
-                        row.push(diffVal(nAR, r(pns.assignedAdvisorCount, pns.totalStudents)));
-                        row.push(diffVal(nOR, r(pns.officeAppointments, pns.totalStudents)));
-                    }
-                    row = row.concat([cs.totalStudents, cs.assignedAdvisorCount, cAR, cs.officeAppointments, cOR]);
-                    if (prevContOffResExp) {
-                        var pcs = prevContOffResExp.officeStats[o] || { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 };
-                        row.push(diffVal(cAR, r(pcs.assignedAdvisorCount, pcs.totalStudents)));
-                        row.push(diffVal(cOR, r(pcs.officeAppointments, pcs.totalStudents)));
-                    }
-                    row = row.concat([s.totalStudents, s.assignedAdvisorCount, tAR, s.officeAppointments, tOR]);
-                    if (hasPrev && prevOffRes) {
-                        var ps = prevOffRes.officeStats[o] || { totalStudents: 0, assignedAdvisorCount: 0, officeAppointments: 0 };
-                        row.push(diffVal(tAR, r(ps.assignedAdvisorCount, ps.totalStudents)));
-                        row.push(diffVal(tOR, r(ps.officeAppointments, ps.totalStudents)));
-                    }
-                    officeRows.push(row);
-                }
-                var ngs = newOffRes.uniqueStudents.size, cgs = contOffRes.uniqueStudents.size, tgs = ed.uniqueStudents.size;
-                var grandRow = ['GRAND TOTAL (Unduplicated)',
-                    ngs, newOffRes.grandTotalAssignedAdvisor, r(newOffRes.grandTotalAssignedAdvisor, ngs), newOffRes.grandTotalOfficeAppt, r(newOffRes.grandTotalOfficeAppt, ngs)];
-                if (prevNewOffResExp) {
-                    var pngs = prevNewOffResExp.uniqueStudents.size;
-                    grandRow.push(diffVal(r(newOffRes.grandTotalAssignedAdvisor, ngs), r(prevNewOffResExp.grandTotalAssignedAdvisor, pngs)));
-                    grandRow.push(diffVal(r(newOffRes.grandTotalOfficeAppt, ngs), r(prevNewOffResExp.grandTotalOfficeAppt, pngs)));
-                }
-                grandRow = grandRow.concat([cgs, contOffRes.grandTotalAssignedAdvisor, r(contOffRes.grandTotalAssignedAdvisor, cgs), contOffRes.grandTotalOfficeAppt, r(contOffRes.grandTotalOfficeAppt, cgs)]);
-                if (prevContOffResExp) {
-                    var pcgs = prevContOffResExp.uniqueStudents.size;
-                    grandRow.push(diffVal(r(contOffRes.grandTotalAssignedAdvisor, cgs), r(prevContOffResExp.grandTotalAssignedAdvisor, pcgs)));
-                    grandRow.push(diffVal(r(contOffRes.grandTotalOfficeAppt, cgs), r(prevContOffResExp.grandTotalOfficeAppt, pcgs)));
-                }
-                grandRow = grandRow.concat([tgs, ed.grandTotalAssignedAdvisor, r(ed.grandTotalAssignedAdvisor, tgs), ed.grandTotalOfficeAppt, r(ed.grandTotalOfficeAppt, tgs)]);
-                if (hasPrev && prevOffRes) {
-                    var ptgs = prevOffRes.uniqueStudents.size;
-                    grandRow.push(diffVal(r(ed.grandTotalAssignedAdvisor, tgs), r(prevOffRes.grandTotalAssignedAdvisor, ptgs)));
-                    grandRow.push(diffVal(r(ed.grandTotalOfficeAppt, tgs), r(prevOffRes.grandTotalOfficeAppt, ptgs)));
-                }
-                officeRows.push(grandRow);
             } else if (hasPrev && prevOffRes) {
-                officeRows.push(['Advising Office', 'Current Students', 'Assigned Advisor Appts', 'Assigned Rate', 'Office Appts', 'Office Rate',
-                    prevLbl + ' Students', prevLbl + ' Assigned Advisor Appts', prevLbl + ' Assigned Rate', prevLbl + ' Office Appts', prevLbl + ' Office Rate',
-                    'Assigned Rate Diff', 'Office Rate Diff']);
-                for (var oi = 0; oi < oKeys.length; oi++) {
-                    var o = oKeys[oi], s = oStats[o];
-                    var aRate = s.totalStudents ? +(s.assignedAdvisorCount / s.totalStudents * 100).toFixed(1) : 0;
-                    var oRate = s.totalStudents ? +(s.officeAppointments / s.totalStudents * 100).toFixed(1) : 0;
-                    var ps = prevOffRes.officeStats[o] || null;
-                    var paRate = ps && ps.totalStudents ? +(ps.assignedAdvisorCount / ps.totalStudents * 100).toFixed(1) : 0;
-                    var poRate = ps && ps.totalStudents ? +(ps.officeAppointments / ps.totalStudents * 100).toFixed(1) : 0;
-                    officeRows.push([o, s.totalStudents, s.assignedAdvisorCount, aRate, s.officeAppointments, oRate,
-                        ps ? ps.totalStudents : '', ps ? ps.assignedAdvisorCount : '', ps ? paRate : '', ps ? ps.officeAppointments : '', ps ? poRate : '',
-                        ps ? +(aRate - paRate).toFixed(1) : '', ps ? +(oRate - poRate).toFixed(1) : '']);
-                }
+                // No Student Type but has prev semester — single Total table with diff
                 var gS = ed.uniqueStudents.size;
-                var gAR = gS ? +(ed.grandTotalAssignedAdvisor / gS * 100).toFixed(1) : 0;
-                var gOR = gS ? +(ed.grandTotalOfficeAppt / gS * 100).toFixed(1) : 0;
                 var pgS = prevOffRes.uniqueStudents.size;
-                var pgAR = pgS ? +(prevOffRes.grandTotalAssignedAdvisor / pgS * 100).toFixed(1) : 0;
-                var pgOR = pgS ? +(prevOffRes.grandTotalOfficeAppt / pgS * 100).toFixed(1) : 0;
-                officeRows.push(['GRAND TOTAL (Unduplicated)', gS, ed.grandTotalAssignedAdvisor, gAR, ed.grandTotalOfficeAppt, gOR,
-                    pgS, prevOffRes.grandTotalAssignedAdvisor, pgAR, prevOffRes.grandTotalOfficeAppt, pgOR,
-                    +(gAR - pgAR).toFixed(1), +(gOR - pgOR).toFixed(1)]);
+                var totalBlockPrev = buildOfficeExportBlock('Total',
+                    oStats, ed.grandTotalAssignedAdvisor, ed.grandTotalOfficeAppt, gS,
+                    prevOffRes.officeStats, prevOffRes.grandTotalAssignedAdvisor, prevOffRes.grandTotalOfficeAppt, pgS);
+                for (var tpi = 0; tpi < totalBlockPrev.length; tpi++) officeRows.push(totalBlockPrev[tpi]);
             } else {
-                officeRows.push(['Advising Office', 'Students', 'Unique', 'Shared', 'Assigned Advisor Appts', 'Assigned Rate', 'Office Appts', 'Office Rate']);
-                for (var oi2 = 0; oi2 < oKeys.length; oi2++) {
-                    var o2 = oKeys[oi2], s2 = oStats[o2];
-                    var aR2 = s2.totalStudents ? +(s2.assignedAdvisorCount / s2.totalStudents * 100).toFixed(1) : 0;
-                    var oR2 = s2.totalStudents ? +(s2.officeAppointments / s2.totalStudents * 100).toFixed(1) : 0;
-                    officeRows.push([o2, s2.totalStudents, s2.uniqueStudents || 0, s2.sharedStudents || 0, s2.assignedAdvisorCount, aR2, s2.officeAppointments, oR2]);
-                }
+                // No Student Type, no prev — single Total table
                 var gS2 = ed.uniqueStudents.size;
-                var gAR2 = gS2 ? +(ed.grandTotalAssignedAdvisor / gS2 * 100).toFixed(1) : 0;
-                var gOR2 = gS2 ? +(ed.grandTotalOfficeAppt / gS2 * 100).toFixed(1) : 0;
-                officeRows.push(['GRAND TOTAL (Unduplicated)', gS2, ed.grandTotalUniqueOnly || 0, ed.grandTotalSharedOnly || 0,
-                    ed.grandTotalAssignedAdvisor, gAR2, ed.grandTotalOfficeAppt, gOR2]);
+                var totalBlockPlain = buildOfficeExportBlock('Total',
+                    oStats, ed.grandTotalAssignedAdvisor, ed.grandTotalOfficeAppt, gS2,
+                    null, 0, 0, 0);
+                for (var tpp = 0; tpp < totalBlockPlain.length; tpp++) officeRows.push(totalBlockPlain[tpp]);
             }
             var wsOffice = XLSX.utils.aoa_to_sheet(officeRows);
             XLSX.utils.book_append_sheet(wb, wsOffice, 'By Office');
