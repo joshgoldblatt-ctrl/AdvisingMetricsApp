@@ -1,9 +1,223 @@
+<!--
+================================================================================
+  App:          LaGuardia Advising Metrics App
+  Version:      8.0
+  Released:     May 13, 2026
+  Developed by: Josh Goldblatt using Claude
+================================================================================
+  CHANGELOG (most recent first)
+--------------------------------------------------------------------------------
+  v8.0  2026-05-13
+    - Export for Tableau button on the Overview tab: produces a long-format
+      CSV (one row per student-office-appointment) designed for Tableau
+      ingestion. Blank-appointment rows preserved for students with no
+      appointments so denominators stay correct. Multi-office students get
+      one row set per assigned office, so each office's rates can be
+      calculated independently in Tableau.
+    - CSV includes 24 columns: Semester, Student ID, Student Type and
+      Student Type Group, Department, Major, Earned Credits, Cumulative
+      GPA, Assigned Office, Assigned Advisor, Assigned Staff ID, Is Shared
+      Student, Appointment Date, Semester Week Number, Appointment
+      Location, Appointment Staff Name and ID, Reported Services, Reported
+      Meeting Type, Appointment Type, Is Advising Service, Met with
+      Assigned Advisor for this Office, Met at Assigned Office, and
+      Is First Appointment at Assigned Office.
+    - Semester Week Number: each appointment row gets a week number
+      calculated from semester start (Fall = 9/1, Spring = 3/1). Week 1
+      = first 7 days of semester, Week 2 = days 8-14, etc.
+    - Export reflects only the currently-loaded semester. Multi-semester
+      Tableau datasets are built by running the export per semester and
+      unioning the files in Tableau.
+
+  v7.9  2026-04-12
+    - By Advisor tab: Assigned Rate Diff column added to the in-app advisor
+      table when a prior semester is loaded. The column is sortable.
+    - In both By Office and By Advisor in-app tables, diff values are
+      color-coded: green for increases, red for decreases.
+
+  v7.8  2026-04-12
+    - By Office and By Advisor exports: prior semester data added to New
+      and Continuing tables (Students and Diff columns), not just Total.
+      If the prior semester file lacks a Student Type column, prior total
+      data is used as the fallback for all three tables.
+    - Column reorder: current and prior semester Students columns now
+      placed side by side at the beginning of each table.
+
+  v7.7  2026-04-12
+    - By Office export: each table (New, Continuing, Total) now includes
+      a prior semester Students column when comparison data is loaded,
+      labeled with the prior semester (e.g., FA24 Students). Diff columns
+      added for New and Continuing as well as Total.
+    - By Office export: rate columns now display with % suffix, diff
+      columns with pp suffix.
+    - By Advisor export restructured to three stacked tables (New,
+      Continuing, Total), matching By Office. Prior semester Students
+      column included when comparison data is loaded. Appointment volume
+      columns remain on Total table only.
+    - Advisor Data Dictionary: added Diff definition.
+
+  v7.6  2026-04-11
+    - By Office tab: tables replace bar charts. Three stacked tables
+      (Total, New, Continuing) with columns matching the Excel export.
+      New and Continuing tables only appear when Student Type data is
+      present.
+    - Unique vs. Shared: removed collapsible wrapper; table now always
+      visible.
+    - By Advisor tab: table replaces bar chart. Sortable.
+    - Advising Office Report export: three separate tables stacked
+      vertically (New, Continuing, Total) instead of one wide combined
+      table.
+
+  v7.5  2026-04-10
+    - Services tab added to Advising Office Report export (Location ->
+      Service breakdown with appointment count and unique student count).
+    - Data Dictionary updated with Services tab definition.
+    - Default current semester updated to SP 26.
+
+  v7.4  2026-04-10
+    - Services tab redesign: comma-separated services are now unbundled
+      so each individual service gets its own row. Restructured as
+      Location -> Service with appointment count and unique student count.
+    - Advising Office Report export cleanup: removed By Department and
+      By Major tabs. Added Data Dictionary as first tab. Renamed
+      "New/Cont/Total Assigned Adv" to "Assigned Appts" and "New/Cont/
+      Total Office Appt" to "Office Appts".
+    - Advisor Report export cleanup: removed By Department tab. Added
+      Data Dictionary as first tab. Renamed "Total Appointments (dup)"
+      to "Appointment volume all" and "Total Appts w/ Assigned" to
+      "Appointment volume assigned".
+
+  v7.3  2026-03-06
+    - By Date tab added: weekly appointment analysis with bar chart and
+      cumulative table showing first appointments by week (unique
+      students having first appointment at assigned office). Total volume
+      table shows raw weekly counts. Office breakout toggle for both
+      tables and chart. Comparison overlay when prior semester loaded.
+    - Cumulative first appointments: running count and percentage of
+      total assigned students reached, per office and overall. First
+      appointments attributed to student's assigned office based on
+      appointment location, using advising-filtered appointments only.
+    - Student Type filter: multi-select in Data Filters (New, Transfer,
+      Continuing, Readmit, Not Found). Recalculates entire analysis.
+    - Students by Office and Student Type table added to Overview.
+    - Weekly Excel export with First Appointments sheet (per-week count,
+      cumulative, cumulative % columns per office) and Total Volume sheet.
+
+  v7.2  2026-03-06
+    - Student Type grouping fix: "Not Found" students no longer grouped
+      with Continuing. Appear as their own row in Overview but excluded
+      from New and Continuing breakouts. Still included in overall totals.
+    - Advisor export: Total Appts w/ Assigned column added (duplicated
+      count of advisor's appointments with their assigned students).
+      Includes diff column when comparison data loaded. Added across
+      all three export paths.
+    - How Calculations Work dropdown added: collapsible section
+      explaining all calculation methodology including grand total
+      deduplication, multi-office handling, and metric definitions.
+
+  v7.1  2026-02-25
+    - Advisor export: Total Appointments column added (raw total
+      appointment count per advisor). Includes diff column when
+      comparison data loaded. Added across all three export paths
+      (student type breakout, comparison, and plain).
+
+  v7.0  2026-02-20
+    - Student Type analysis added: New (= New + Transfer), Continuing
+      (= Continuing + Readmit + Not Found at this point — Not Found
+      separation came in v7.2). Grouped bar charts in By Office, By
+      Advisor, and frequency sections showing All/New/Continuing
+      breakouts.
+    - Interface restructure: charts emphasized over tables. Main office
+      and advisor rate tables removed from in-app display (preserved in
+      exports). Frequency tables removed from in-app (preserved in
+      exports).
+    - Overview enhancements: Credits and GPA tables show both Assigned
+      Advisor Rate and Office Appointment Rate. New Analysis by Student
+      Type section.
+    - Export enhancements: By Office and By Advisor sheets include
+      New/Continuing/Total columns with diff columns. Frequency sheets
+      include student type row breakouts. New By Department and By
+      Major sheets.
+
+  v6.5  2026-02-19
+    - Duplicate office deduplication: seven fixes across the app for
+      students with same office listed multiple times (e.g., two
+      advisors at the same office). Prevents double-counting in office
+      stats, frequency tables, multi-office breakdowns, and shared/
+      unique classification.
+    - Veterans Services alias: caseload-side normalization for
+      "Veterans Services" -> "Veteran Service" to match appointment
+      location naming.
+
+  v6.4  2026-02-18
+    - Comparison data redesign: prior semester comparison moved from
+      tables to charts. All bar charts show a thinner gray comparison
+      bar with change badges (e.g., "+1.2pp"). Comparison data removed
+      from office and advisor tables.
+    - Advisor chart improvements: shows union of current and previous
+      semester advisors. Prior-only advisors show gray bars; current-
+      only advisors show no prior bar. Prior advisor names resolved
+      from prior caseload data.
+
+  v6.3  2026-02-18
+    - Advisor rate chart added: horizontal bar chart showing Assigned
+      Advisor Rate per advisor, grouped by office with color-coded bars
+      based on rate thresholds. Advisor table made collapsible.
+
+  v6.1  2026-02-17
+    - Office name aliasing: centralized office name normalization
+      system using officeNameAliases. Added "CUNY 2X Tech Academy" ->
+      "CUNY 2X Tech Computer Science" mapping across all caseload and
+      appointment processing.
+
+  v6.0  2026-02-09
+    - Semester comparison added: previous semester upload area with
+      caseload and appointment inputs. FA/SP semester label selectors.
+      Comparison badges and prior values across all scorecards and
+      tables.
+    - Appointment frequency added: new sections in By Office and By
+      Advisor tabs showing distribution of 0/1/2/3/4+ appointments per
+      student with stacked bar charts and tables.
+    - Student data export: added appointment count columns (# Appts
+      with Assigned Advisor, # Appts within Assigned Office, # Total
+      Appointments).
+
+  v5.0  2026-02-06
+    - Appointment Metrics tab added: scorecards for self-booked
+      appointments, appointments by location, and service type
+      breakdowns.
+    - Multi-office filter improvements: semicolon-separated office
+      parsing for filter logic.
+
+  v4.0-4.8  2026-01 to 2026-02
+    - Core features built across this range: multi-office and multi-
+      advisor student handling, three-tier tracking (Assigned Advisor,
+      Any Advisor from Office, Office Appointment), advising services
+      configuration, data filters (Office, Advisor, Major, Services,
+      Meeting Type, Appointment Type), Excel exports for office and
+      advisor reports, student data CSV export, progress bar for large
+      datasets, Reported Services tab, By Major tab, multi-office
+      scorecard and breakdown.
+
+  v1.0  (initial release, prior to v4.0)
+    - Initial release of the LaGuardia Advising Metrics App. Single-
+      file HTML application that processes a caseload CSV (enrolled
+      students with advisor assignments) and an appointment CSV
+      (advising appointments) to measure advising coverage rates
+      across multiple offices (ASAP, College Discovery, Student
+      Advising Services, International Student Services, CUNY 2X Tech
+      Computer Science, Careers in Engineering, Veteran Services).
+      Built with ES5-compatible JavaScript, PapaParse for CSV parsing
+      (web workers disabled for compatibility), and CDN-loaded
+      libraries only (no server-side processing).
+================================================================================
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 7.9</title>
+    <title>LaGuardia Advising Metrics App - Version 8.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -896,7 +1110,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 7.9 - Released April 12, 2026</div>
+            <div class="subtitle">Version 8.0 - Released May 13, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -908,6 +1122,12 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.0 — May 13, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Export for Tableau button</strong> — New button on the Overview tab that generates a long-format CSV designed for Tableau ingestion. Produces one row per student-office-appointment combination, with separate rows preserved for students with no appointments so denominators stay intact. Multi-office students get one set of rows per assigned office, allowing each office's rates to be calculated independently in Tableau.</p>
+                <p style="margin: 0 0 4px 0;"><strong>CSV structure</strong> — Includes Semester, Student ID, Student Type, Student Type Group, Major, Earned Credits, Cumulative GPA, Assigned Office, Assigned Advisor, Staff ID, Is Shared Student, Appointment Date, Appointment Location, Appointment Staff, Reported Services, Is Advising Service, Met with Assigned Advisor for this Office, Met at Assigned Office, First Appointment at Assigned Office, and Semester Week Number columns. Supports all 4 planned Tableau views: By Office tables, By Advisor table, multi-semester comparison, and week-by-week comparison.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Semester Week Number</strong> — Each appointment row includes a Week Number (Week 1, Week 2, etc.) calculated from the semester start date (Fall = 9/1, Spring = 3/1). Enables in-semester week-by-week comparison across multiple semesters in Tableau.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Current semester only</strong> — Export reflects the current semester loaded in the app. To build a multi-semester Tableau dataset, run the export for each semester separately and union the files in Tableau.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 7.9 — April 12, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>By Advisor tab — Assigned Rate Diff column</strong> — When a prior semester is loaded, a Rate Diff column now appears in the in-app advisor table showing the percentage point change in Assigned Rate. The column is sortable.</p>
@@ -1169,6 +1389,7 @@
                 <div id="overview-tab" class="tab-content active">
                     <h3>Overview Analysis</h3>
                     <button class="export-pdf-button" onclick="exportStudentData()">Export Student Data</button>
+                    <button class="export-pdf-button" onclick="exportForTableau()" style="margin-left: 10px; background: #5a3d8a;">Export for Tableau</button>
                     <div id="overview-content">
                         <div class="placeholder-message">
                             Upload both files and click "Run Analysis" to see the overview
@@ -7753,6 +7974,392 @@ function exportStudentData() {
     } catch (error) {
         console.error('Error exporting student data:', error);
         alert('Failed to export student data. Please check console for details.');
+    }
+}
+
+// ============================================================
+// Export for Tableau — long-format CSV
+// One row per (student × assigned_office × appointment).
+// Students with no qualifying appointments get one blank-
+// appointment row per assigned office so denominators stay
+// correct when Tableau aggregates.
+// ============================================================
+function exportForTableau() {
+    try {
+        if (!filteredData || !idx) {
+            alert('No data available to export. Please run the analysis first.');
+            return;
+        }
+
+        var caseloadCols = idx.caseloadCols;
+        var apptCols = idx.apptCols;
+        var currentSemester = getCurrentSemesterLabel();
+
+        // Locate optional columns
+        var keys0 = Object.keys(filteredData[0]);
+        var majorCol = findColumn(keys0, ['MAJOR', 'Major', 'Majors']);
+        var creditsCol = findColumn(keys0, ['Earned Credits', 'Credits Earned', 'Earned_Credits']);
+        var gpaCol = findColumn(keys0, ['Cumulative GPA', 'GPA', 'Cumulative_GPA']);
+        var deptCol = findColumn(keys0, ['Student Academic Department', 'Student_Academic_Department', 'Academic Department', 'Department']);
+
+        var apptKeys0 = filteredAppointmentData && filteredAppointmentData.length > 0 ? Object.keys(filteredAppointmentData[0]) : [];
+        var servicesCol = apptKeys0.length ? findColumn(apptKeys0, ['Reported Services', 'Reported_Services']) : null;
+        var meetingTypeCol = apptKeys0.length ? findColumn(apptKeys0, ['Reported Meeting Type', 'Reported_Meeting_Type', 'Meeting Type']) : null;
+        var appointmentTypeCol = apptKeys0.length ? findColumn(apptKeys0, ['Appointment Type', 'Appointment_Type', 'Type']) : null;
+        var dateCol = apptCols && apptCols.date ? apptCols.date : (apptKeys0.length ? findColumn(apptKeys0, ['Reported Start Date', 'Start Date', 'Date', 'Appointment Date', 'Schedule Date']) : null);
+
+        // Semester week-number helper: Fall = 9/1, Spring = 3/1
+        // Week 1 starts on the semester start date itself. Each subsequent week
+        // is a 7-day window from there. This gives consistent week numbering
+        // independent of which day of the week the semester begins.
+        function getSemesterStartDate(semesterLabel) {
+            // semesterLabel like "FA24" or "SP26"
+            var term = semesterLabel.substring(0, 2);
+            var yr = parseInt(semesterLabel.substring(2), 10);
+            var fullYear = 2000 + yr;
+            if (term === 'FA') return new Date(fullYear, 8, 1); // Sept 1
+            if (term === 'SP') return new Date(fullYear, 2, 1); // Mar 1
+            return null;
+        }
+        function computeWeekNumber(apptDate, semesterStart) {
+            if (!apptDate || !semesterStart) return '';
+            // Normalize both to midnight so the comparison is purely day-based.
+            var apptDay = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
+            var startDay = new Date(semesterStart.getFullYear(), semesterStart.getMonth(), semesterStart.getDate());
+            var diffMs = apptDay.getTime() - startDay.getTime();
+            var diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+            if (diffDays < 0) return ''; // appointment before semester start
+            return Math.floor(diffDays / 7) + 1;
+        }
+        var semesterStartDate = getSemesterStartDate(currentSemester);
+
+        // Reuse the same location-to-office mapping that buildIndexes uses.
+        function normalizeApptLocationToOffices(location) {
+            if (!location) return [];
+            var loc = String(location).trim();
+            if (loc === 'Veterans Services') return ['Veteran Services'];
+            if (loc === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
+            return [loc];
+        }
+
+        function parseSemicolonList(val) {
+            if (val === null || val === undefined) return [];
+            return String(val).split(';').map(function(s){return s.trim();}).filter(function(s){return s.length > 0;});
+        }
+
+        // Pre-build: for each student, count unique assigned offices so we can flag shared students.
+        var studentUniqueOfficeCount = {};
+        for (var pi = 0; pi < filteredData.length; pi++) {
+            var pSid = filteredData[pi][caseloadCols.studentId];
+            if (pSid === null || pSid === undefined || pSid === '') continue;
+            var pOffices = parseSemicolonList(filteredData[pi][caseloadCols.office]).map(normalizeOfficeName);
+            var uniq = new Set();
+            for (var poi = 0; poi < pOffices.length; poi++) uniq.add(pOffices[poi]);
+            studentUniqueOfficeCount[pSid] = uniq.size;
+        }
+
+        // Pre-build: for each student, group their appointments by which assigned office
+        // they belong to. An appointment belongs to an assigned office if its
+        // normalized location matches that office. We use ALL appointments (not just
+        // advising-flagged ones) so the row exists; Is Advising Service is a flag.
+        // Use idx.apptsByStudent which contains ALL appointments per student.
+        var studentApptsByOffice = {}; // sid -> office -> array of appointment objects
+        var studentAllAppts = idx.apptsByStudent || new Map();
+
+        // To avoid double-listing the same appointment under multiple offices when an
+        // appointment's location maps to multiple offices (e.g., Math, Engineering & CS
+        // maps to both Careers in Engineering and CUNY 2X Tech CS), we attribute the
+        // appointment ONLY to assigned offices that the student is actually assigned to,
+        // limited to those that match the location.
+
+        // Build student -> assigned offices set
+        var studentAssignedOffices = {}; // sid -> Set of assigned offices
+        var studentAssignedAdvisorInfo = {}; // sid -> office -> { advisorName, staffId }
+        // Build positional alignment between offices, staffIds, advisors per caseload row
+        for (var ci = 0; ci < filteredData.length; ci++) {
+            var cRow = filteredData[ci];
+            var cSid = cRow[caseloadCols.studentId];
+            if (cSid === null || cSid === undefined || cSid === '') continue;
+            var cOffices = parseSemicolonList(cRow[caseloadCols.office]).map(normalizeOfficeName);
+            var cStaffIds = parseSemicolonList(cRow[caseloadCols.staffId]);
+            var cAdvisors = parseSemicolonList(cRow[caseloadCols.advisor]);
+            if (!studentAssignedOffices[cSid]) studentAssignedOffices[cSid] = new Set();
+            if (!studentAssignedAdvisorInfo[cSid]) studentAssignedAdvisorInfo[cSid] = {};
+            var maxLen = Math.max(cOffices.length, cStaffIds.length, cAdvisors.length);
+            for (var pp = 0; pp < maxLen; pp++) {
+                var cOff = cOffices[pp];
+                if (!cOff) continue;
+                studentAssignedOffices[cSid].add(cOff);
+                if (!studentAssignedAdvisorInfo[cSid][cOff]) {
+                    studentAssignedAdvisorInfo[cSid][cOff] = {
+                        advisorName: cAdvisors[pp] || '',
+                        staffId: cStaffIds[pp] || ''
+                    };
+                }
+            }
+        }
+
+        // Now iterate all appointments and attribute each to matching assigned offices.
+        studentAllAppts.forEach(function(apptList, sid) {
+            var assignedOffSet = studentAssignedOffices[sid];
+            if (!assignedOffSet || assignedOffSet.size === 0) return;
+            if (!studentApptsByOffice[sid]) studentApptsByOffice[sid] = {};
+            for (var ai = 0; ai < apptList.length; ai++) {
+                var appt = apptList[ai];
+                var rawLoc = appt[apptCols.office];
+                var mappedOffices = normalizeApptLocationToOffices(rawLoc);
+                // Also consider the raw location itself
+                if (rawLoc) mappedOffices.push(String(rawLoc).trim());
+                var matched = new Set();
+                for (var mi = 0; mi < mappedOffices.length; mi++) {
+                    var mo = mappedOffices[mi];
+                    if (assignedOffSet.has(mo)) matched.add(mo);
+                }
+                matched.forEach(function(off) {
+                    if (!studentApptsByOffice[sid][off]) studentApptsByOffice[sid][off] = [];
+                    studentApptsByOffice[sid][off].push(appt);
+                });
+            }
+        });
+
+        // For first-appointment-at-assigned-office flag, find the earliest appt date per (sid, office)
+        // Only advising-service appointments count toward "first appointment" so this matches Chart 4 logic.
+        var firstApptDatePerSidOffice = {}; // sid -> office -> Date (earliest advising appt)
+        Object.keys(studentApptsByOffice).forEach(function(sid) {
+            var offMap = studentApptsByOffice[sid];
+            Object.keys(offMap).forEach(function(off) {
+                var earliest = null;
+                var apptArr = offMap[off];
+                for (var k = 0; k < apptArr.length; k++) {
+                    var ap = apptArr[k];
+                    // Check if advising service
+                    var svcStr = servicesCol ? ap[servicesCol] : null;
+                    var isAdv = false;
+                    if (!svcStr || advisingServices.size === 0) {
+                        isAdv = true;
+                    } else {
+                        var svcs = String(svcStr).split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+                        for (var si = 0; si < svcs.length; si++) {
+                            if (advisingServices.has(svcs[si])) { isAdv = true; break; }
+                        }
+                    }
+                    if (!isAdv) continue;
+                    var dtStr = dateCol ? ap[dateCol] : null;
+                    var dt = dtStr ? parseTableauDate(dtStr) : null;
+                    if (dt && (earliest === null || dt < earliest)) earliest = dt;
+                }
+                if (earliest !== null) {
+                    if (!firstApptDatePerSidOffice[sid]) firstApptDatePerSidOffice[sid] = {};
+                    firstApptDatePerSidOffice[sid][off] = earliest;
+                }
+            });
+        });
+
+        // Helper to parse date (M/D/YYYY or other parseable formats)
+        function parseTableauDate(s) {
+            if (!s) return null;
+            var str = String(s).trim();
+            var parts = str.split('/');
+            if (parts.length === 3) {
+                var m = parseInt(parts[0], 10) - 1;
+                var d = parseInt(parts[1], 10);
+                var y = parseInt(parts[2], 10);
+                if (y < 100) y += 2000;
+                var dt = new Date(y, m, d);
+                if (!isNaN(dt.getTime())) return dt;
+            }
+            var dt2 = new Date(str);
+            if (!isNaN(dt2.getTime())) return dt2;
+            return null;
+        }
+
+        // Build the export rows
+        var exportRows = [];
+        for (var si = 0; si < filteredData.length; si++) {
+            var student = filteredData[si];
+            var sid = student[caseloadCols.studentId];
+            if (sid === null || sid === undefined || sid === '') continue;
+
+            var studentTypeRaw = caseloadCols.studentType ? (student[caseloadCols.studentType] || '') : '';
+            var studentTypeGroup = getStudentTypeGroup(studentTypeRaw);
+            if (!studentTypeGroup) {
+                // Use raw value for special cases like "Not Found", or blank
+                var rawTrim = String(studentTypeRaw).trim();
+                studentTypeGroup = rawTrim === 'Not Found' ? 'Not Found' : (rawTrim || '');
+            }
+            var majorVal = majorCol ? (student[majorCol] || '') : '';
+            var creditsVal = creditsCol ? (student[creditsCol] !== undefined && student[creditsCol] !== null ? student[creditsCol] : '') : '';
+            var gpaVal = gpaCol ? (student[gpaCol] !== undefined && student[gpaCol] !== null ? student[gpaCol] : '') : '';
+            var deptVal = deptCol ? (student[deptCol] || '') : '';
+            var isShared = (studentUniqueOfficeCount[sid] || 0) > 1 ? 'Yes' : 'No';
+
+            var assignedOffSet = studentAssignedOffices[sid];
+            if (!assignedOffSet || assignedOffSet.size === 0) continue;
+
+            var assignedOfficesArr = Array.from(assignedOffSet).sort();
+
+            // For each assigned office, emit one row per appointment (if any),
+            // or one blank-appointment row if none.
+            for (var oi = 0; oi < assignedOfficesArr.length; oi++) {
+                var office = assignedOfficesArr[oi];
+                var advisorInfo = studentAssignedAdvisorInfo[sid][office] || { advisorName: '', staffId: '' };
+                var appts = (studentApptsByOffice[sid] && studentApptsByOffice[sid][office]) || [];
+                var firstApptDate = firstApptDatePerSidOffice[sid] ? firstApptDatePerSidOffice[sid][office] : null;
+                var officeToAdvisorsAtOff = idx.officeToAdvisors.get(office) || new Set();
+
+                if (appts.length === 0) {
+                    // No appointments at this office — emit a blank-appointment row
+                    exportRows.push({
+                        Semester: currentSemester,
+                        'Student ID': sid,
+                        'Student Type': studentTypeRaw,
+                        'Student Type Group': studentTypeGroup,
+                        Department: deptVal,
+                        Major: majorVal,
+                        'Earned Credits': creditsVal,
+                        'Cumulative GPA': gpaVal,
+                        'Assigned Office': office,
+                        'Assigned Advisor': advisorInfo.advisorName,
+                        'Assigned Staff ID': advisorInfo.staffId,
+                        'Is Shared Student': isShared,
+                        'Appointment Date': '',
+                        'Semester Week Number': '',
+                        'Appointment Location': '',
+                        'Appointment Staff Name': '',
+                        'Appointment Staff ID': '',
+                        'Reported Services': '',
+                        'Reported Meeting Type': '',
+                        'Appointment Type': '',
+                        'Is Advising Service': '',
+                        'Met with Assigned Advisor for this Office': 'No',
+                        'Met at Assigned Office': 'No',
+                        'Is First Appointment at Assigned Office': ''
+                    });
+                } else {
+                    for (var ai2 = 0; ai2 < appts.length; ai2++) {
+                        var appt = appts[ai2];
+                        var apptDateStr = dateCol ? (appt[dateCol] || '') : '';
+                        var apptDateObj = apptDateStr ? parseTableauDate(apptDateStr) : null;
+                        var weekNum = apptDateObj && semesterStartDate ? computeWeekNumber(apptDateObj, semesterStartDate) : '';
+                        var apptLoc = appt[apptCols.office] || '';
+                        var apptStaffId = appt[apptCols.staffId] !== undefined && appt[apptCols.staffId] !== null ? String(appt[apptCols.staffId]).trim() : '';
+                        var apptStaffName = apptCols.advisor ? (appt[apptCols.advisor] || '') : '';
+                        var svcStr = servicesCol ? (appt[servicesCol] || '') : '';
+                        var mtVal = meetingTypeCol ? (appt[meetingTypeCol] || '') : '';
+                        var atVal = appointmentTypeCol ? (appt[appointmentTypeCol] || '') : '';
+
+                        // Is Advising Service?
+                        var isAdv = 'No';
+                        if (!svcStr || advisingServices.size === 0) {
+                            isAdv = 'Yes';
+                        } else {
+                            var svcs = String(svcStr).split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+                            for (var sx = 0; sx < svcs.length; sx++) {
+                                if (advisingServices.has(svcs[sx])) { isAdv = 'Yes'; break; }
+                            }
+                        }
+
+                        // Met with Assigned Advisor for this Office: this appointment's staff is
+                        // (a) the student's assigned advisor AT this office AND
+                        // (b) that staff member is in the office's advisor pool AND
+                        // (c) this is an advising service.
+                        var metAssigned = 'No';
+                        if (isAdv === 'Yes' && apptStaffId && advisorInfo.staffId) {
+                            if (apptStaffId === String(advisorInfo.staffId).trim() && officeToAdvisorsAtOff.has(apptStaffId)) {
+                                metAssigned = 'Yes';
+                            }
+                        }
+
+                        // Met at Assigned Office: appointment location maps to this office AND advising service
+                        // (this matches the Office Appointment Rate definition)
+                        var metAtOffice = isAdv === 'Yes' ? 'Yes' : 'No';
+                        // Because we only attributed advising-eligible appointments to this office's row,
+                        // we still need to require advising. Note: location already matches by construction.
+
+                        // Is First Appointment at Assigned Office: true if this appt's date equals
+                        // the earliest advising appt date for this student-office pair.
+                        var isFirst = 'No';
+                        if (firstApptDate && apptDateObj && apptDateObj.getTime() === firstApptDate.getTime() && isAdv === 'Yes') {
+                            isFirst = 'Yes';
+                        }
+
+                        exportRows.push({
+                            Semester: currentSemester,
+                            'Student ID': sid,
+                            'Student Type': studentTypeRaw,
+                            'Student Type Group': studentTypeGroup,
+                            Department: deptVal,
+                            Major: majorVal,
+                            'Earned Credits': creditsVal,
+                            'Cumulative GPA': gpaVal,
+                            'Assigned Office': office,
+                            'Assigned Advisor': advisorInfo.advisorName,
+                            'Assigned Staff ID': advisorInfo.staffId,
+                            'Is Shared Student': isShared,
+                            'Appointment Date': apptDateStr,
+                            'Semester Week Number': weekNum,
+                            'Appointment Location': apptLoc,
+                            'Appointment Staff Name': apptStaffName,
+                            'Appointment Staff ID': apptStaffId,
+                            'Reported Services': svcStr,
+                            'Reported Meeting Type': mtVal,
+                            'Appointment Type': atVal,
+                            'Is Advising Service': isAdv,
+                            'Met with Assigned Advisor for this Office': metAssigned,
+                            'Met at Assigned Office': metAtOffice,
+                            'Is First Appointment at Assigned Office': isFirst
+                        });
+                    }
+                }
+            }
+        }
+
+        // Build CSV
+        var columns = [
+            'Semester', 'Student ID', 'Student Type', 'Student Type Group',
+            'Department', 'Major', 'Earned Credits', 'Cumulative GPA',
+            'Assigned Office', 'Assigned Advisor', 'Assigned Staff ID', 'Is Shared Student',
+            'Appointment Date', 'Semester Week Number',
+            'Appointment Location', 'Appointment Staff Name', 'Appointment Staff ID',
+            'Reported Services', 'Reported Meeting Type', 'Appointment Type',
+            'Is Advising Service',
+            'Met with Assigned Advisor for this Office',
+            'Met at Assigned Office',
+            'Is First Appointment at Assigned Office'
+        ];
+
+        var csv = columns.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
+        for (var r = 0; r < exportRows.length; r++) {
+            var rd = exportRows[r];
+            var vals = columns.map(function(col) {
+                var v = rd[col];
+                if (v === null || v === undefined) v = '';
+                return '"' + String(v).replace(/"/g, '""') + '"';
+            });
+            csv += vals.join(',') + '\n';
+        }
+
+        // Generate filename: tableau_<SEMESTER>_<MM.DD.YY>.csv
+        var now = new Date();
+        var mm = String(now.getMonth() + 1).padStart(2, '0');
+        var dd = String(now.getDate()).padStart(2, '0');
+        var yy = String(now.getFullYear()).slice(-2);
+        var filename = 'tableau_' + currentSemester + '_' + mm + '.' + dd + '.' + yy + '.csv';
+
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Error exporting for Tableau:', error);
+        alert('Failed to export Tableau file. Please check console for details.');
     }
 }
 
