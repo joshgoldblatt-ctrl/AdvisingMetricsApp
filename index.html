@@ -1,12 +1,27 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.0
-  Released:     May 13, 2026
+  Version:      8.1
+  Released:     May 14, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.1  2026-05-14
+    - Tableau export: per-advisor row granularity. The export now emits
+      one row per (student × assigned office × assigned advisor ×
+      appointment-or-blank) instead of one row per (student × assigned
+      office × appointment). This fixes a small undercount in office-
+      level "Met with Assigned Advisor" totals for students assigned to
+      multiple advisors at the same office, and enables accurate
+      advisor-level counts in Tableau (e.g., if a student is assigned
+      to two advisors at the same office and met only one, the student
+      counts as "met" for advisor 1 and "not met" for advisor 2).
+    - Office-level COUNTD calculations in Tableau are unaffected
+      (deduplication on Student ID still works correctly).
+    - Row count is modestly higher than v8.0 (proportional to the
+      number of students with multiple advisors at the same office).
+
   v8.0  2026-05-13
     - Export for Tableau button on the Overview tab: produces a long-format
       CSV (one row per student-office-appointment) designed for Tableau
@@ -217,7 +232,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.0</title>
+    <title>LaGuardia Advising Metrics App - Version 8.1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1110,7 +1125,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 8.0 - Released May 13, 2026</div>
+            <div class="subtitle">Version 8.1 - Released May 14, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -1122,6 +1137,11 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.1 — May 14, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Tableau export — per-advisor row granularity</strong> — The export now emits one row per (student × assigned office × assigned advisor × appointment-or-blank) instead of one row per (student × assigned office × appointment). This fixes a small undercount in office-level "Met with Assigned Advisor" totals for students assigned to multiple advisors at the same office.</p>
+                <p style="margin: 0 0 4px 0;"><strong>Accurate advisor-level counts in Tableau</strong> — If a student is assigned to two advisors at the same office and met only one of them, the student now correctly counts as "met" for the advisor they met and "not met" for the other.</p>
+                <p style="margin: 0 0 8px 0;"><strong>Row count</strong> — Modestly higher than v8.0, proportional to the number of students with multiple advisors at the same office. Office-level COUNTD calculations in Tableau are unaffected.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.0 — May 13, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>Export for Tableau button</strong> — New button on the Overview tab that generates a long-format CSV designed for Tableau ingestion. Produces one row per student-office-appointment combination, with separate rows preserved for students with no appointments so denominators stay intact. Multi-office students get one set of rows per assigned office, allowing each office's rates to be calculated independently in Tableau.</p>
@@ -8075,7 +8095,9 @@ function exportForTableau() {
 
         // Build student -> assigned offices set
         var studentAssignedOffices = {}; // sid -> Set of assigned offices
-        var studentAssignedAdvisorInfo = {}; // sid -> office -> { advisorName, staffId }
+        // Map of sid -> office -> array of { advisorName, staffId } — one entry per assigned advisor
+        // at that office. Students with multiple advisors at the same office get multiple entries.
+        var studentAssignedAdvisorsByOffice = {};
         // Build positional alignment between offices, staffIds, advisors per caseload row
         for (var ci = 0; ci < filteredData.length; ci++) {
             var cRow = filteredData[ci];
@@ -8085,17 +8107,31 @@ function exportForTableau() {
             var cStaffIds = parseSemicolonList(cRow[caseloadCols.staffId]);
             var cAdvisors = parseSemicolonList(cRow[caseloadCols.advisor]);
             if (!studentAssignedOffices[cSid]) studentAssignedOffices[cSid] = new Set();
-            if (!studentAssignedAdvisorInfo[cSid]) studentAssignedAdvisorInfo[cSid] = {};
+            if (!studentAssignedAdvisorsByOffice[cSid]) studentAssignedAdvisorsByOffice[cSid] = {};
             var maxLen = Math.max(cOffices.length, cStaffIds.length, cAdvisors.length);
             for (var pp = 0; pp < maxLen; pp++) {
                 var cOff = cOffices[pp];
                 if (!cOff) continue;
                 studentAssignedOffices[cSid].add(cOff);
-                if (!studentAssignedAdvisorInfo[cSid][cOff]) {
-                    studentAssignedAdvisorInfo[cSid][cOff] = {
-                        advisorName: cAdvisors[pp] || '',
-                        staffId: cStaffIds[pp] || ''
-                    };
+                if (!studentAssignedAdvisorsByOffice[cSid][cOff]) {
+                    studentAssignedAdvisorsByOffice[cSid][cOff] = [];
+                }
+                var nextStaffId = cStaffIds[pp] !== undefined ? String(cStaffIds[pp]).trim() : '';
+                var nextAdvisor = cAdvisors[pp] !== undefined ? String(cAdvisors[pp]).trim() : '';
+                // Dedupe by staff ID — same advisor listed twice for one office shouldn't create
+                // a duplicate entry. If staffId is blank, use advisor name as the dedupe key.
+                var alreadyHave = false;
+                var existing = studentAssignedAdvisorsByOffice[cSid][cOff];
+                for (var dki = 0; dki < existing.length; dki++) {
+                    var keyExisting = existing[dki].staffId || existing[dki].advisorName;
+                    var keyNext = nextStaffId || nextAdvisor;
+                    if (keyExisting && keyNext && keyExisting === keyNext) { alreadyHave = true; break; }
+                }
+                if (!alreadyHave) {
+                    studentAssignedAdvisorsByOffice[cSid][cOff].push({
+                        advisorName: nextAdvisor,
+                        staffId: nextStaffId
+                    });
                 }
             }
         }
@@ -8199,91 +8235,22 @@ function exportForTableau() {
 
             var assignedOfficesArr = Array.from(assignedOffSet).sort();
 
-            // For each assigned office, emit one row per appointment (if any),
-            // or one blank-appointment row if none.
+            // For each assigned office, iterate over EACH assigned advisor at that office
+            // (Option C: per-advisor granularity for accurate advisor-level counts), then
+            // emit one row per appointment for that office (Met flag keyed to this row's
+            // specific advisor), or one blank-appointment row if no appointments at the office.
             for (var oi = 0; oi < assignedOfficesArr.length; oi++) {
                 var office = assignedOfficesArr[oi];
-                var advisorInfo = studentAssignedAdvisorInfo[sid][office] || { advisorName: '', staffId: '' };
+                var advisorsAtOffice = (studentAssignedAdvisorsByOffice[sid] && studentAssignedAdvisorsByOffice[sid][office]) || [{ advisorName: '', staffId: '' }];
                 var appts = (studentApptsByOffice[sid] && studentApptsByOffice[sid][office]) || [];
                 var firstApptDate = firstApptDatePerSidOffice[sid] ? firstApptDatePerSidOffice[sid][office] : null;
                 var officeToAdvisorsAtOff = idx.officeToAdvisors.get(office) || new Set();
 
-                if (appts.length === 0) {
-                    // No appointments at this office — emit a blank-appointment row
-                    exportRows.push({
-                        Semester: currentSemester,
-                        'Student ID': sid,
-                        'Student Type': studentTypeRaw,
-                        'Student Type Group': studentTypeGroup,
-                        Department: deptVal,
-                        Major: majorVal,
-                        'Earned Credits': creditsVal,
-                        'Cumulative GPA': gpaVal,
-                        'Assigned Office': office,
-                        'Assigned Advisor': advisorInfo.advisorName,
-                        'Assigned Staff ID': advisorInfo.staffId,
-                        'Is Shared Student': isShared,
-                        'Appointment Date': '',
-                        'Semester Week Number': '',
-                        'Appointment Location': '',
-                        'Appointment Staff Name': '',
-                        'Appointment Staff ID': '',
-                        'Reported Services': '',
-                        'Reported Meeting Type': '',
-                        'Appointment Type': '',
-                        'Is Advising Service': '',
-                        'Met with Assigned Advisor for this Office': 'No',
-                        'Met at Assigned Office': 'No',
-                        'Is First Appointment at Assigned Office': ''
-                    });
-                } else {
-                    for (var ai2 = 0; ai2 < appts.length; ai2++) {
-                        var appt = appts[ai2];
-                        var apptDateStr = dateCol ? (appt[dateCol] || '') : '';
-                        var apptDateObj = apptDateStr ? parseTableauDate(apptDateStr) : null;
-                        var weekNum = apptDateObj && semesterStartDate ? computeWeekNumber(apptDateObj, semesterStartDate) : '';
-                        var apptLoc = appt[apptCols.office] || '';
-                        var apptStaffId = appt[apptCols.staffId] !== undefined && appt[apptCols.staffId] !== null ? String(appt[apptCols.staffId]).trim() : '';
-                        var apptStaffName = apptCols.advisor ? (appt[apptCols.advisor] || '') : '';
-                        var svcStr = servicesCol ? (appt[servicesCol] || '') : '';
-                        var mtVal = meetingTypeCol ? (appt[meetingTypeCol] || '') : '';
-                        var atVal = appointmentTypeCol ? (appt[appointmentTypeCol] || '') : '';
+                for (var advi = 0; advi < advisorsAtOffice.length; advi++) {
+                    var advisorInfo = advisorsAtOffice[advi];
 
-                        // Is Advising Service?
-                        var isAdv = 'No';
-                        if (!svcStr || advisingServices.size === 0) {
-                            isAdv = 'Yes';
-                        } else {
-                            var svcs = String(svcStr).split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
-                            for (var sx = 0; sx < svcs.length; sx++) {
-                                if (advisingServices.has(svcs[sx])) { isAdv = 'Yes'; break; }
-                            }
-                        }
-
-                        // Met with Assigned Advisor for this Office: this appointment's staff is
-                        // (a) the student's assigned advisor AT this office AND
-                        // (b) that staff member is in the office's advisor pool AND
-                        // (c) this is an advising service.
-                        var metAssigned = 'No';
-                        if (isAdv === 'Yes' && apptStaffId && advisorInfo.staffId) {
-                            if (apptStaffId === String(advisorInfo.staffId).trim() && officeToAdvisorsAtOff.has(apptStaffId)) {
-                                metAssigned = 'Yes';
-                            }
-                        }
-
-                        // Met at Assigned Office: appointment location maps to this office AND advising service
-                        // (this matches the Office Appointment Rate definition)
-                        var metAtOffice = isAdv === 'Yes' ? 'Yes' : 'No';
-                        // Because we only attributed advising-eligible appointments to this office's row,
-                        // we still need to require advising. Note: location already matches by construction.
-
-                        // Is First Appointment at Assigned Office: true if this appt's date equals
-                        // the earliest advising appt date for this student-office pair.
-                        var isFirst = 'No';
-                        if (firstApptDate && apptDateObj && apptDateObj.getTime() === firstApptDate.getTime() && isAdv === 'Yes') {
-                            isFirst = 'Yes';
-                        }
-
+                    if (appts.length === 0) {
+                        // No appointments at this office — emit a blank-appointment row for this advisor
                         exportRows.push({
                             Semester: currentSemester,
                             'Student ID': sid,
@@ -8297,19 +8264,97 @@ function exportForTableau() {
                             'Assigned Advisor': advisorInfo.advisorName,
                             'Assigned Staff ID': advisorInfo.staffId,
                             'Is Shared Student': isShared,
-                            'Appointment Date': apptDateStr,
-                            'Semester Week Number': weekNum,
-                            'Appointment Location': apptLoc,
-                            'Appointment Staff Name': apptStaffName,
-                            'Appointment Staff ID': apptStaffId,
-                            'Reported Services': svcStr,
-                            'Reported Meeting Type': mtVal,
-                            'Appointment Type': atVal,
-                            'Is Advising Service': isAdv,
-                            'Met with Assigned Advisor for this Office': metAssigned,
-                            'Met at Assigned Office': metAtOffice,
-                            'Is First Appointment at Assigned Office': isFirst
+                            'Appointment Date': '',
+                            'Semester Week Number': '',
+                            'Appointment Location': '',
+                            'Appointment Staff Name': '',
+                            'Appointment Staff ID': '',
+                            'Reported Services': '',
+                            'Reported Meeting Type': '',
+                            'Appointment Type': '',
+                            'Is Advising Service': '',
+                            'Met with Assigned Advisor for this Office': 'No',
+                            'Met at Assigned Office': 'No',
+                            'Is First Appointment at Assigned Office': ''
                         });
+                    } else {
+                        for (var ai2 = 0; ai2 < appts.length; ai2++) {
+                            var appt = appts[ai2];
+                            var apptDateStr = dateCol ? (appt[dateCol] || '') : '';
+                            var apptDateObj = apptDateStr ? parseTableauDate(apptDateStr) : null;
+                            var weekNum = apptDateObj && semesterStartDate ? computeWeekNumber(apptDateObj, semesterStartDate) : '';
+                            var apptLoc = appt[apptCols.office] || '';
+                            var apptStaffId = appt[apptCols.staffId] !== undefined && appt[apptCols.staffId] !== null ? String(appt[apptCols.staffId]).trim() : '';
+                            var apptStaffName = apptCols.advisor ? (appt[apptCols.advisor] || '') : '';
+                            var svcStr = servicesCol ? (appt[servicesCol] || '') : '';
+                            var mtVal = meetingTypeCol ? (appt[meetingTypeCol] || '') : '';
+                            var atVal = appointmentTypeCol ? (appt[appointmentTypeCol] || '') : '';
+
+                            // Is Advising Service?
+                            var isAdv = 'No';
+                            if (!svcStr || advisingServices.size === 0) {
+                                isAdv = 'Yes';
+                            } else {
+                                var svcs = String(svcStr).split(',').map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+                                for (var sx = 0; sx < svcs.length; sx++) {
+                                    if (advisingServices.has(svcs[sx])) { isAdv = 'Yes'; break; }
+                                }
+                            }
+
+                            // Met with Assigned Advisor for this Office: this appointment's staff is
+                            // (a) the SPECIFIC advisor in this row (per-advisor granularity) AND
+                            // (b) that advisor is in the office's advisor pool AND
+                            // (c) this is an advising service.
+                            var metAssigned = 'No';
+                            if (isAdv === 'Yes' && apptStaffId && advisorInfo.staffId) {
+                                if (apptStaffId === String(advisorInfo.staffId).trim() && officeToAdvisorsAtOff.has(apptStaffId)) {
+                                    metAssigned = 'Yes';
+                                }
+                            }
+
+                            // Met at Assigned Office: appointment location maps to this office AND advising service
+                            // (this matches the Office Appointment Rate definition).
+                            // Note: this flag is the SAME for every advisor row of the same appointment
+                            // (it's about the location, not the advisor). When sliced at the office level
+                            // with COUNTD on Student ID, the duplicate-per-advisor effect is naturally
+                            // deduplicated. When sliced at the advisor level, students appear in each
+                            // advisor's caseload they're assigned to — which is what the app does.
+                            var metAtOffice = isAdv === 'Yes' ? 'Yes' : 'No';
+
+                            // Is First Appointment at Assigned Office: true if this appt's date equals
+                            // the earliest advising appt date for this student-office pair AND advising service.
+                            var isFirst = 'No';
+                            if (firstApptDate && apptDateObj && apptDateObj.getTime() === firstApptDate.getTime() && isAdv === 'Yes') {
+                                isFirst = 'Yes';
+                            }
+
+                            exportRows.push({
+                                Semester: currentSemester,
+                                'Student ID': sid,
+                                'Student Type': studentTypeRaw,
+                                'Student Type Group': studentTypeGroup,
+                                Department: deptVal,
+                                Major: majorVal,
+                                'Earned Credits': creditsVal,
+                                'Cumulative GPA': gpaVal,
+                                'Assigned Office': office,
+                                'Assigned Advisor': advisorInfo.advisorName,
+                                'Assigned Staff ID': advisorInfo.staffId,
+                                'Is Shared Student': isShared,
+                                'Appointment Date': apptDateStr,
+                                'Semester Week Number': weekNum,
+                                'Appointment Location': apptLoc,
+                                'Appointment Staff Name': apptStaffName,
+                                'Appointment Staff ID': apptStaffId,
+                                'Reported Services': svcStr,
+                                'Reported Meeting Type': mtVal,
+                                'Appointment Type': atVal,
+                                'Is Advising Service': isAdv,
+                                'Met with Assigned Advisor for this Office': metAssigned,
+                                'Met at Assigned Office': metAtOffice,
+                                'Is First Appointment at Assigned Office': isFirst
+                            });
+                        }
                     }
                 }
             }
