@@ -1,12 +1,25 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.1
-  Released:     May 14, 2026
+  Version:      8.2
+  Released:     June 29, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.2  2026-06-29
+    - Location name fix: Navigate changed the advising location
+      "Math, Engineering & Computer Science" to use the word "and"
+      instead of the ampersand ("Math, Engineering and Computer
+      Science"). This location maps to both the Careers in Engineering
+      and CUNY 2X Tech Computer Science offices. The change had broken
+      office attribution for those two programs (appointments at this
+      location were no longer being matched). The app now recognizes
+      BOTH spellings everywhere location-to-office mapping occurs, so
+      historical files (with the ampersand) and new files (with "and")
+      both work correctly. Added the new spelling to officeNameAliases
+      and to all location-matching checks.
+
   v8.1  2026-05-14
     - Tableau export: per-advisor row granularity. The export now emits
       one row per (student × assigned office × assigned advisor ×
@@ -232,7 +245,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.1</title>
+    <title>LaGuardia Advising Metrics App - Version 8.2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1125,7 +1138,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 8.1 - Released May 14, 2026</div>
+            <div class="subtitle">Version 8.2 - Released June 29, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -1137,6 +1150,9 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.2 — June 29, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Location name fix (Math, Engineering &amp; Computer Science)</strong> — Navigate changed this advising location to use the word "and" instead of the ampersand ("Math, Engineering and Computer Science"). Because this location maps to both the Careers in Engineering and CUNY 2X Tech Computer Science offices, the change had broken office attribution for those two programs. The app now recognizes both spellings everywhere location-to-office mapping occurs, so older files (with the ampersand) and new files (with "and") both work correctly.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.1 — May 14, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>Tableau export — per-advisor row granularity</strong> — The export now emits one row per (student × assigned office × assigned advisor × appointment-or-blank) instead of one row per (student × assigned office × appointment). This fixes a small undercount in office-level "Met with Assigned Advisor" totals for students assigned to multiple advisors at the same office.</p>
@@ -1550,7 +1566,11 @@
     // Office name aliases: maps old/alternate names to canonical names
     var officeNameAliases = {
         'CUNY 2X Tech Academy': 'CUNY 2X Tech Computer Science',
-        'Veterans Services': 'Veteran Services'
+        'Veterans Services': 'Veteran Services',
+        // Navigate changed the ampersand to "and" in this location name.
+        // Normalize the new spelling to the original canonical form so all
+        // downstream location-to-office mapping continues to work.
+        'Math, Engineering and Computer Science': 'Math, Engineering & Computer Science'
     };
     function normalizeOfficeName(name) {
         if (!name) return name;
@@ -2880,7 +2900,7 @@
             }
             
             // Map "Math, Engineering & Computer Science" to both engineering programs
-            if (loc === 'Math, Engineering & Computer Science') {
+            if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') {
                 return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
             }
 
@@ -4351,7 +4371,7 @@
             if (!location) return [];
             var loc = String(location).trim();
             if (loc === 'Veterans Services') return ['Veteran Services'];
-            if (loc === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
             if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [loc];
         }
@@ -4576,7 +4596,7 @@
                 if (!location) return [];
                 var loc = String(location).trim();
                 if (loc === 'Veterans Services') return ['Veteran Services'];
-                if (loc === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+                if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
                 if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
                 return [loc];
             }
@@ -5804,8 +5824,8 @@
         var locationFilter = [];
         if (officeFilter.length > 0) {
             var officeToLocationMap = {
-                'Careers in Engineering': ['Math, Engineering & Computer Science', 'Careers in Engineering'],
-                'CUNY 2X Tech Computer Science': ['Math, Engineering & Computer Science', 'CUNY 2X Tech Computer Science'],
+                'Careers in Engineering': ['Math, Engineering & Computer Science', 'Math, Engineering and Computer Science', 'Careers in Engineering'],
+                'CUNY 2X Tech Computer Science': ['Math, Engineering & Computer Science', 'Math, Engineering and Computer Science', 'CUNY 2X Tech Computer Science'],
                 'Veteran Services': ['Veterans Services', 'Veteran Services']
             };
             
@@ -6413,7 +6433,7 @@
             if (!loc) return [];
             var s = String(loc).trim();
             if (s === 'Veterans Services') return ['Veteran Services'];
-            if (s === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (s === 'Math, Engineering & Computer Science' || s === 'Math, Engineering and Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
             if (s === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [s];
         }
@@ -7922,7 +7942,7 @@ function exportStudentData() {
                 // Build set of normalized office names including mappings
                 var assignedOfficeNames = new Set(officeListExport);
                 // Add location-name variants
-                var locationToOffice = { 'Veterans Services': 'Veteran Services', 'Math, Engineering & Computer Science': ['Careers in Engineering', 'CUNY 2X Tech Computer Science'] };
+                var locationToOffice = { 'Veterans Services': 'Veteran Services', 'Math, Engineering & Computer Science': ['Careers in Engineering', 'CUNY 2X Tech Computer Science'], 'Math, Engineering and Computer Science': ['Careers in Engineering', 'CUNY 2X Tech Computer Science'] };
                 for (var ai2 = 0; ai2 < advisingAppts.length; ai2++) {
                     var apptLoc = advisingAppts[ai2][idx.apptCols.office];
                     if (!apptLoc) continue;
@@ -7931,7 +7951,7 @@ function exportStudentData() {
                     if (assignedOfficeNames.has(locStr)) { apptCountWithinOffice++; continue; }
                     // Check normalized mappings
                     if (locStr === 'Veterans Services' && assignedOfficeNames.has('Veteran Services')) { apptCountWithinOffice++; continue; }
-                    if (locStr === 'Math, Engineering & Computer Science') {
+                    if (locStr === 'Math, Engineering & Computer Science' || locStr === 'Math, Engineering and Computer Science') {
                         if (assignedOfficeNames.has('Careers in Engineering') || assignedOfficeNames.has('CUNY 2X Tech Computer Science')) { apptCountWithinOffice++; continue; }
                     }
                     if (locStr === 'CUNY 2X Tech Academy' && assignedOfficeNames.has('CUNY 2X Tech Computer Science')) { apptCountWithinOffice++; continue; }
@@ -8058,7 +8078,7 @@ function exportForTableau() {
             if (!location) return [];
             var loc = String(location).trim();
             if (loc === 'Veterans Services') return ['Veteran Services'];
-            if (loc === 'Math, Engineering & Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
             if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [loc];
         }
