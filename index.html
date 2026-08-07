@@ -1,12 +1,22 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.2
-  Released:     June 29, 2026
+  Version:      8.3
+  Released:     August 7, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.3  2026-08-07
+    - Tableau export: added a "Student Name" column, placed immediately
+      after Student ID. The name is read from the caseload file's name
+      column (Student Name / Student_Name / Name). If the caseload has
+      no name column, the export falls back to the Student Name in the
+      appointment data (in which case students with no appointments have
+      a blank name). Note: previously exported semester CSVs do not have
+      this column; in a Tableau wildcard union they will show blank
+      Student Name until re-exported.
+
   v8.2  2026-06-29
     - Location name fix: Navigate changed the advising location
       "Math, Engineering & Computer Science" to use the word "and"
@@ -245,7 +255,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.2</title>
+    <title>LaGuardia Advising Metrics App - Version 8.3</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1138,7 +1148,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 8.2 - Released June 29, 2026</div>
+            <div class="subtitle">Version 8.3 - Released August 7, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -1150,6 +1160,9 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.3 — August 7, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Student Name in Tableau export</strong> — The Tableau CSV export now includes a "Student Name" column, placed immediately after Student ID. The name is read from the caseload file's name column; if the caseload has no name column, the export falls back to the Student Name found in the appointment data (students with no appointments would then have a blank name). Semester CSVs exported before v8.3 do not contain this column and will show blank Student Name in a Tableau wildcard union until re-exported.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.2 — June 29, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>Location name fix (Math, Engineering &amp; Computer Science)</strong> — Navigate changed this advising location to use the word "and" instead of the ampersand ("Math, Engineering and Computer Science"). Because this location maps to both the Careers in Engineering and CUNY 2X Tech Computer Science offices, the change had broken office attribution for those two programs. The app now recognizes both spellings everywhere location-to-office mapping occurs, so older files (with the ampersand) and new files (with "and") both work correctly.</p>
@@ -8041,12 +8054,29 @@ function exportForTableau() {
         var creditsCol = findColumn(keys0, ['Earned Credits', 'Credits Earned', 'Earned_Credits']);
         var gpaCol = findColumn(keys0, ['Cumulative GPA', 'GPA', 'Cumulative_GPA']);
         var deptCol = findColumn(keys0, ['Student Academic Department', 'Student_Academic_Department', 'Academic Department', 'Department']);
+        // v8.3: Student Name for the Tableau export. Prefer the caseload's name
+        // column; if the caseload has none, fall back to the appointment data's
+        // Student Name (students with no appointments would then be blank).
+        var studentNameCaseloadCol = findColumn(keys0, ['Student Name', 'Student_Name', 'Name']);
 
         var apptKeys0 = filteredAppointmentData && filteredAppointmentData.length > 0 ? Object.keys(filteredAppointmentData[0]) : [];
         var servicesCol = apptKeys0.length ? findColumn(apptKeys0, ['Reported Services', 'Reported_Services']) : null;
         var meetingTypeCol = apptKeys0.length ? findColumn(apptKeys0, ['Reported Meeting Type', 'Reported_Meeting_Type', 'Meeting Type']) : null;
         var appointmentTypeCol = apptKeys0.length ? findColumn(apptKeys0, ['Appointment Type', 'Appointment_Type', 'Type']) : null;
         var dateCol = apptCols && apptCols.date ? apptCols.date : (apptKeys0.length ? findColumn(apptKeys0, ['Reported Start Date', 'Start Date', 'Date', 'Appointment Date', 'Schedule Date']) : null);
+        // v8.3: fallback map of Student ID -> Student Name from appointment data,
+        // used only when the caseload file has no name column.
+        var apptStudentNameCol = apptKeys0.length ? findColumn(apptKeys0, ['Student Name', 'Student_Name', 'Name']) : null;
+        var apptNameBySid = {};
+        if (!studentNameCaseloadCol && apptStudentNameCol && filteredAppointmentData) {
+            for (var nmi = 0; nmi < filteredAppointmentData.length; nmi++) {
+                var nmRow = filteredAppointmentData[nmi];
+                var nmSid = nmRow[apptCols.studentId];
+                if (nmSid !== null && nmSid !== undefined && nmSid !== '' && !apptNameBySid[nmSid] && nmRow[apptStudentNameCol]) {
+                    apptNameBySid[nmSid] = String(nmRow[apptStudentNameCol]).trim();
+                }
+            }
+        }
 
         // Semester week-number helper: Fall = 9/1, Spring = 3/1
         // Week 1 starts on the semester start date itself. Each subsequent week
@@ -8248,6 +8278,7 @@ function exportForTableau() {
             var creditsVal = creditsCol ? (student[creditsCol] !== undefined && student[creditsCol] !== null ? student[creditsCol] : '') : '';
             var gpaVal = gpaCol ? (student[gpaCol] !== undefined && student[gpaCol] !== null ? student[gpaCol] : '') : '';
             var deptVal = deptCol ? (student[deptCol] || '') : '';
+            var studentNameVal = studentNameCaseloadCol ? (student[studentNameCaseloadCol] || '') : (apptNameBySid[sid] || '');
             var isShared = (studentUniqueOfficeCount[sid] || 0) > 1 ? 'Yes' : 'No';
 
             var assignedOffSet = studentAssignedOffices[sid];
@@ -8274,6 +8305,7 @@ function exportForTableau() {
                         exportRows.push({
                             Semester: currentSemester,
                             'Student ID': sid,
+                            'Student Name': studentNameVal,
                             'Student Type': studentTypeRaw,
                             'Student Type Group': studentTypeGroup,
                             Department: deptVal,
@@ -8351,6 +8383,7 @@ function exportForTableau() {
                             exportRows.push({
                                 Semester: currentSemester,
                                 'Student ID': sid,
+                                'Student Name': studentNameVal,
                                 'Student Type': studentTypeRaw,
                                 'Student Type Group': studentTypeGroup,
                                 Department: deptVal,
@@ -8382,7 +8415,7 @@ function exportForTableau() {
 
         // Build CSV
         var columns = [
-            'Semester', 'Student ID', 'Student Type', 'Student Type Group',
+            'Semester', 'Student ID', 'Student Name', 'Student Type', 'Student Type Group',
             'Department', 'Major', 'Earned Credits', 'Cumulative GPA',
             'Assigned Office', 'Assigned Advisor', 'Assigned Staff ID', 'Is Shared Student',
             'Appointment Date', 'Semester Week Number',
