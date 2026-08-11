@@ -1,12 +1,37 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.3
-  Released:     August 7, 2026
+  Version:      8.4
+  Released:     August 11, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.4  2026-08-11
+    - Next-semester enrollment status (optional). New upload slot for a
+      next-semester enrollment file plus an Enrollment Term picker
+      (e.g. FA26). Only the Student ID column is read; a student whose
+      ID appears in the file is treated as enrolled for that term.
+      Three columns added to the end of the Tableau export:
+        * "Next Semester Enrollment Status" - four buckets:
+          Enrolled / Not Enrolled (by ID presence), or
+          "Degree Awarded/Approved" (Graduation Status of Degree
+          Awarded or Approved), or "Graduation Status - Other"
+          (Applied for Graduation, Needs to Finish Pending Work,
+          Program in Review). Graduating buckets are separated so they
+          can be excluded from re-enrollment rate denominators.
+        * "Enrolled Next Semester" - plain Yes/No by ID presence,
+          independent of graduation bucket (supports re-enrollment
+          reporting for graduating students separately).
+        * "Enrollment Term" - the picker value.
+      Graduation Status is read from the current caseload file
+      (optional column). Two-status values like "Applied for
+      Graduation; Degree Awarded" indicate second-degree students: if
+      exactly one status is "Degree Awarded", the other status is
+      treated as current. All three columns are blank when no
+      enrollment file is uploaded; the export header always includes
+      them for Tableau union stability.
+
   v8.3  2026-08-07
     - Tableau export: added a "Student Name" column, placed immediately
       after Student ID. The name is read from the caseload file's name
@@ -255,7 +280,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.3</title>
+    <title>LaGuardia Advising Metrics App - Version 8.4</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1148,7 +1173,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 8.3 - Released August 7, 2026</div>
+            <div class="subtitle">Version 8.4 - Released August 11, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -1160,6 +1185,9 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.4 — August 11, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Next-semester enrollment status (optional)</strong> — New upload slot for a next-semester enrollment file with an Enrollment Term picker. Only the Student ID column is read; presence in the file means the student is enrolled for that term. The Tableau export gains three columns at the end: "Next Semester Enrollment Status" (Enrolled / Not Enrolled / Degree Awarded-Approved / Graduation Status - Other, using the caseload's Graduation Status column to separate graduating students out of re-enrollment denominators), "Enrolled Next Semester" (Yes/No by ID presence, independent of graduation bucket), and "Enrollment Term". Two-status Graduation Status values (second-degree students) treat the non-"Degree Awarded" status as current. All three columns are blank when no enrollment file is uploaded.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.3 — August 7, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>Student Name in Tableau export</strong> — The Tableau CSV export now includes a "Student Name" column, placed immediately after Student ID. The name is read from the caseload file's name column; if the caseload has no name column, the export falls back to the Student Name found in the appointment data (students with no appointments would then have a blank name). Semester CSVs exported before v8.3 do not contain this column and will show blank Student Name in a Tableau wildcard union until re-exported.</p>
@@ -1397,6 +1425,34 @@
                 </div>
             </div>
 
+            <!-- Next-Semester Enrollment (Optional, v8.4) -->
+            <div style="border-top: 2px solid #dee2e6; margin-top: 20px; padding-top: 20px;">
+                <h4 style="color: #667eea; margin-bottom: 12px;">🎓 Next-Semester Enrollment <span style="font-weight: 400; font-size: 13px; color: #6c757d;">(Optional — adds re-enrollment status columns to the Tableau export)</span></h4>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                    <label style="font-weight: 600; color: #495057; font-size: 14px;">Enrollment Term:</label>
+                    <select id="enrollment-term" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px;">
+                        <option value="FA" selected>FA</option>
+                        <option value="SP">SP</option>
+                    </select>
+                    <select id="enrollment-year" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 14px;">
+                        <option value="24">24</option>
+                        <option value="25">25</option>
+                        <option value="26" selected>26</option>
+                        <option value="27">27</option>
+                    </select>
+                </div>
+                <div class="file-input-container">
+                    <div class="file-input-group">
+                        <label for="enrollment-file">Upload Next-Semester Enrollment File (CSV)</label>
+                        <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; margin: 5px 0; font-size: 12px;">
+                            Only the <code>Student ID</code> column is read. A student whose ID appears in this file is treated as enrolled for the selected term; students not in the file are treated as not enrolled. Graduation Status (from the current caseload file) separates graduating students out of the re-enrollment denominator.
+                        </div>
+                        <input type="file" id="enrollment-file" class="file-input" accept=".csv" />
+                        <div id="enrollment-status" class="file-status"></div>
+                    </div>
+                </div>
+            </div>
+
             <button id="analyze-button" class="analyze-button" disabled onclick="runAnalysis()">
                 <div class="loading-spinner"></div>
                 <span id="analyze-text">Run Analysis</span>
@@ -1597,6 +1653,10 @@
     var prevFilteredData = null;
     var prevFilteredAppointmentData = null;
     var prevIdx = null;
+
+    // Next-semester enrollment data (v8.4): Set of Student IDs enrolled for the
+    // selected enrollment term. Null when no enrollment file is loaded.
+    var enrollmentIdSet = null;
 
     // ===== Multiselect Component =====
     function createMultiselect(containerId, options) {
@@ -1945,6 +2005,8 @@
         var prevAppointmentFile = document.getElementById('prev-appointment-file');
         if (prevCaseloadFile) prevCaseloadFile.addEventListener('change', handlePrevCaseloadFile);
         if (prevAppointmentFile) prevAppointmentFile.addEventListener('change', handlePrevAppointmentFile);
+        var enrollmentFileInput = document.getElementById('enrollment-file');
+        if (enrollmentFileInput) enrollmentFileInput.addEventListener('change', handleEnrollmentFile);
         
         // Initialize multiselect filters
         initializeFilters();
@@ -2256,6 +2318,51 @@
             button.className = 'analyze-button';
             txt.textContent = 'Run Analysis';
         }
+    }
+
+    // Next-semester enrollment file handler (v8.4). Only the Student ID column
+    // is read; presence in the file = enrolled for the selected term.
+    function getEnrollmentTermLabel() {
+        return getSemesterLabel('enrollment-term', 'enrollment-year');
+    }
+    function handleEnrollmentFile(event) {
+        var file = event.target.files[0];
+        var statusEl = document.getElementById('enrollment-status');
+        if (!file) { enrollmentIdSet = null; statusEl.textContent = ''; statusEl.className = 'file-status'; return; }
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                if (results.data && results.data.length > 0) {
+                    var keys = Object.keys(results.data[0]);
+                    var idCol = findColumn(keys, ['Student ID', 'StudentID', 'Student_ID', 'ID']);
+                    if (!idCol) {
+                        statusEl.textContent = '✗ No Student ID column found in enrollment file';
+                        statusEl.className = 'file-status error';
+                        enrollmentIdSet = null;
+                        return;
+                    }
+                    enrollmentIdSet = new Set();
+                    for (var ei = 0; ei < results.data.length; ei++) {
+                        var ev = results.data[ei][idCol];
+                        if (ev !== null && ev !== undefined && String(ev).trim() !== '') {
+                            enrollmentIdSet.add(String(ev).trim());
+                        }
+                    }
+                    statusEl.textContent = '✓ ' + enrollmentIdSet.size + ' enrolled student IDs loaded for ' + getEnrollmentTermLabel();
+                    statusEl.className = 'file-status success';
+                } else {
+                    statusEl.textContent = '✗ No data found';
+                    statusEl.className = 'file-status error';
+                    enrollmentIdSet = null;
+                }
+            },
+            error: function(err) {
+                statusEl.textContent = '✗ Error: ' + err.message;
+                statusEl.className = 'file-status error';
+                enrollmentIdSet = null;
+            }
+        });
     }
 
     // Previous semester file handlers
@@ -8064,6 +8171,55 @@ function exportForTableau() {
         var meetingTypeCol = apptKeys0.length ? findColumn(apptKeys0, ['Reported Meeting Type', 'Reported_Meeting_Type', 'Meeting Type']) : null;
         var appointmentTypeCol = apptKeys0.length ? findColumn(apptKeys0, ['Appointment Type', 'Appointment_Type', 'Type']) : null;
         var dateCol = apptCols && apptCols.date ? apptCols.date : (apptKeys0.length ? findColumn(apptKeys0, ['Reported Start Date', 'Start Date', 'Date', 'Appointment Date', 'Schedule Date']) : null);
+        // v8.4: Next-semester enrollment status. Buckets per spec:
+        //   Degree Awarded / Approved -> 'Degree Awarded/Approved'
+        //   Applied for Graduation / Needs to Finish Pending Work /
+        //   Program in Review -> 'Graduation Status - Other'
+        //   everything else (blank, Eligible to Apply, Denied, Withdrawn) ->
+        //   'Enrolled' / 'Not Enrolled' by Student ID presence in the
+        //   enrollment file.
+        // Two-status values (e.g. "Applied for Graduation; Degree Awarded")
+        // indicate a second-degree student: if exactly one status is "Degree
+        // Awarded", the OTHER status is the current one. Otherwise, prefer a
+        // separated-out status if present.
+        var gradStatusCol = findColumn(keys0, ['Graduation Status', 'Graduation_Status']);
+        var SEPARATED_AWARDED = { 'Degree Awarded': true, 'Approved': true };
+        var SEPARATED_OTHER = { 'Applied for Graduation': true, 'Needs to Finish Pending Work': true, 'Program in Review': true };
+        var enrollmentTermLabel = enrollmentIdSet ? getEnrollmentTermLabel() : '';
+        function currentGradStatus(raw) {
+            var s = String(raw || '').trim();
+            if (!s) return '';
+            var parts = [];
+            var rawParts = s.split(';');
+            for (var pi = 0; pi < rawParts.length; pi++) {
+                var p = rawParts[pi].trim();
+                if (p) parts.push(p);
+            }
+            if (parts.length === 0) return '';
+            if (parts.length === 1) return parts[0];
+            // Second-degree rule: exactly one "Degree Awarded" -> use the other status
+            var nonDA = [];
+            for (var qi = 0; qi < parts.length; qi++) {
+                if (parts[qi] !== 'Degree Awarded') nonDA.push(parts[qi]);
+            }
+            if (parts.length - nonDA.length === 1 && nonDA.length === 1) return nonDA[0];
+            if (parts.length - nonDA.length === 1 && nonDA.length > 1) parts = nonDA;
+            // Otherwise prefer a separated-out status if any is present
+            for (var ri = 0; ri < parts.length; ri++) {
+                if (SEPARATED_AWARDED[parts[ri]]) return parts[ri];
+            }
+            for (var ti = 0; ti < parts.length; ti++) {
+                if (SEPARATED_OTHER[parts[ti]]) return parts[ti];
+            }
+            return parts[0];
+        }
+        function nextSemesterStatusFor(sid, gradRaw) {
+            var cur = currentGradStatus(gradRaw);
+            if (SEPARATED_AWARDED[cur]) return 'Degree Awarded/Approved';
+            if (SEPARATED_OTHER[cur]) return 'Graduation Status - Other';
+            return enrollmentIdSet.has(String(sid).trim()) ? 'Enrolled' : 'Not Enrolled';
+        }
+
         // v8.3: fallback map of Student ID -> Student Name from appointment data,
         // used only when the caseload file has no name column.
         var apptStudentNameCol = apptKeys0.length ? findColumn(apptKeys0, ['Student Name', 'Student_Name', 'Name']) : null;
@@ -8279,6 +8435,13 @@ function exportForTableau() {
             var gpaVal = gpaCol ? (student[gpaCol] !== undefined && student[gpaCol] !== null ? student[gpaCol] : '') : '';
             var deptVal = deptCol ? (student[deptCol] || '') : '';
             var studentNameVal = studentNameCaseloadCol ? (student[studentNameCaseloadCol] || '') : (apptNameBySid[sid] || '');
+            var gradRawVal = gradStatusCol ? (student[gradStatusCol] || '') : '';
+            var nextSemStatusVal = '';
+            var enrolledNextVal = '';
+            if (enrollmentIdSet) {
+                nextSemStatusVal = nextSemesterStatusFor(sid, gradRawVal);
+                enrolledNextVal = enrollmentIdSet.has(String(sid).trim()) ? 'Yes' : 'No';
+            }
             var isShared = (studentUniqueOfficeCount[sid] || 0) > 1 ? 'Yes' : 'No';
 
             var assignedOffSet = studentAssignedOffices[sid];
@@ -8327,7 +8490,10 @@ function exportForTableau() {
                             'Is Advising Service': '',
                             'Met with Assigned Advisor for this Office': 'No',
                             'Met at Assigned Office': 'No',
-                            'Is First Appointment at Assigned Office': ''
+                            'Is First Appointment at Assigned Office': '',
+                            'Next Semester Enrollment Status': nextSemStatusVal,
+                            'Enrolled Next Semester': enrolledNextVal,
+                            'Enrollment Term': enrollmentIdSet ? enrollmentTermLabel : ''
                         });
                     } else {
                         for (var ai2 = 0; ai2 < appts.length; ai2++) {
@@ -8405,7 +8571,10 @@ function exportForTableau() {
                                 'Is Advising Service': isAdv,
                                 'Met with Assigned Advisor for this Office': metAssigned,
                                 'Met at Assigned Office': metAtOffice,
-                                'Is First Appointment at Assigned Office': isFirst
+                                'Is First Appointment at Assigned Office': isFirst,
+                                'Next Semester Enrollment Status': nextSemStatusVal,
+                                'Enrolled Next Semester': enrolledNextVal,
+                                'Enrollment Term': enrollmentIdSet ? enrollmentTermLabel : ''
                             });
                         }
                     }
@@ -8424,7 +8593,10 @@ function exportForTableau() {
             'Is Advising Service',
             'Met with Assigned Advisor for this Office',
             'Met at Assigned Office',
-            'Is First Appointment at Assigned Office'
+            'Is First Appointment at Assigned Office',
+            'Next Semester Enrollment Status',
+            'Enrolled Next Semester',
+            'Enrollment Term'
         ];
 
         var csv = columns.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
