@@ -1,12 +1,27 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.5
-  Released:     August 12, 2026
+  Version:      8.6
+  Released:     August 13, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.6  2026-08-13
+    - U Services analysis. New student-anchored "U Services - Student
+      Reach" section at the top of the Reported Services tab: counts of
+      caseload students with at least one appointment including a "U-"
+      service (prefix-matched, so new U- services are picked up
+      automatically), at three attribution levels - anywhere / at an
+      assigned office / with an assigned advisor - plus a per-service
+      table with appointment and student counts at each level. Location
+      matching mirrors the met-with metrics (Veterans naming and the
+      Math/Engineering dual-office cases). Counts respect the app's
+      filters. Two columns added to the end of the Tableau export:
+      "Has U Service" (Yes/No per appointment row) and "U Services"
+      (semicolon-joined U- services on that appointment), blank on
+      no-appointment rows.
+
   v8.5  2026-08-12
     - Caseload upload now warns when any row lists more advisors than
       offices. The app pairs advisors to offices by list position, so
@@ -291,7 +306,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.5</title>
+    <title>LaGuardia Advising Metrics App - Version 8.6</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1184,7 +1199,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 8.5 - Released August 12, 2026</div>
+            <div class="subtitle">Version 8.6 - Released August 13, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -1196,6 +1211,9 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.6 — August 13, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>U Services analysis</strong> — New "U Services — Student Reach" section at the top of the Reported Services tab: distinct caseload students with at least one appointment including a "U-" service, at three attribution levels (anywhere / at an assigned office / with an assigned advisor), plus a per-service breakdown with appointment and student counts. U- services are prefix-matched so new ones are picked up automatically, and counts respect the app's filters. The Tableau export gains two columns: "Has U Service" (Yes/No per appointment row) and "U Services" (semicolon-joined list of that appointment's U- services).</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.5 — August 12, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>Advisor–office alignment warning</strong> — The caseload upload now warns when any row lists more advisors than offices. Advisors are paired to offices by list position, so surplus advisors would be silently dropped from advisor-level results and the Tableau export. Caseload files from Caseload File Generator v3.9.3–v3.9.5 collapsed repeated office names and triggered this; v3.9.6 restores aligned lists. The warning is advisory — analysis still runs.</p>
@@ -6270,6 +6288,129 @@
         content.innerHTML = html;
     }
 
+    // v8.6: U Services analysis helpers -------------------------------------
+    // Extract services beginning with "U-" from a raw Reported Services string.
+    // Services are comma-separated and never contain internal commas.
+    function extractUServices(serviceRaw) {
+        if (!serviceRaw || !String(serviceRaw).trim()) return [];
+        var parts = String(serviceRaw).split(',');
+        var out = [];
+        for (var i = 0; i < parts.length; i++) {
+            var s = parts[i].trim();
+            if (s.indexOf('U-') === 0) out.push(s);
+        }
+        return out;
+    }
+    // Does an appointment location correspond to any of the student's assigned
+    // offices? Mirrors the location matching used by the met-with metrics,
+    // including the Veterans naming and the Math/Engineering dual-office cases.
+    function locationMatchesAssignedOffices(locStr, officeSet) {
+        var loc = String(locStr || '').trim();
+        if (!loc) return false;
+        if (officeSet.has(loc)) return true;
+        var norm = normalizeOfficeName(loc);
+        if (officeSet.has(norm)) return true;
+        if (loc === 'Veterans Services' && officeSet.has('Veteran Services')) return true;
+        if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') {
+            if (officeSet.has('Careers in Engineering') || officeSet.has('CUNY 2X Tech Computer Science')) return true;
+        }
+        return false;
+    }
+    // Build the student-anchored U Services section HTML for the Services tab.
+    function buildUServicesSection(servicesColumn, apptCols) {
+        if (!filteredData || !filteredData.length || !filteredAppointmentData || !filteredAppointmentData.length) return '';
+        var cCols = getColumnMappings(filteredData[0]);
+        // Per-student assigned offices (canonical) and assigned staff IDs
+        var studentOffices = {};
+        var studentStaffIds = {};
+        var caseloadIds = {};
+        var totalStudents = 0;
+        for (var ci = 0; ci < filteredData.length; ci++) {
+            var cRow = filteredData[ci];
+            var cSid = cRow[cCols.studentId];
+            if (cSid === null || cSid === undefined || String(cSid).trim() === '') continue;
+            cSid = String(cSid).trim();
+            if (!caseloadIds[cSid]) { caseloadIds[cSid] = true; totalStudents++; }
+            var offs = parseSemicolonList(cRow[cCols.office]);
+            var sidsList = parseSemicolonList(cRow[cCols.staffId]);
+            if (!studentOffices[cSid]) studentOffices[cSid] = new Set();
+            for (var oi = 0; oi < offs.length; oi++) studentOffices[cSid].add(normalizeOfficeName(offs[oi]));
+            if (!studentStaffIds[cSid]) studentStaffIds[cSid] = new Set();
+            for (var si = 0; si < sidsList.length; si++) studentStaffIds[cSid].add(String(sidsList[si]).trim());
+        }
+        // Scan appointments for U- services
+        var anywhere = {};      // sid -> true
+        var atOffice = {};
+        var withAdvisor = {};
+        var perService = {};    // svc -> { appts, anywhere:{}, atOffice:{}, withAdvisor:{} }
+        for (var ai = 0; ai < filteredAppointmentData.length; ai++) {
+            var a = filteredAppointmentData[ai];
+            var uSvcs = extractUServices(a[servicesColumn]);
+            if (!uSvcs.length) continue;
+            var aSid = a[apptCols.studentId];
+            if (aSid === null || aSid === undefined || String(aSid).trim() === '') continue;
+            aSid = String(aSid).trim();
+            if (!caseloadIds[aSid]) continue; // student-anchored: caseload students only
+            var offSet = studentOffices[aSid] || new Set();
+            var staffSet = studentStaffIds[aSid] || new Set();
+            var aLoc = apptCols.office ? a[apptCols.office] : '';
+            var aStaff = apptCols.staffId ? String(a[apptCols.staffId] === null || a[apptCols.staffId] === undefined ? '' : a[apptCols.staffId]).trim() : '';
+            var inOffice = locationMatchesAssignedOffices(aLoc, offSet);
+            var withAdv = aStaff !== '' && staffSet.has(aStaff);
+            anywhere[aSid] = true;
+            if (inOffice) atOffice[aSid] = true;
+            if (withAdv) withAdvisor[aSid] = true;
+            for (var ui = 0; ui < uSvcs.length; ui++) {
+                var svc = uSvcs[ui];
+                if (!perService[svc]) perService[svc] = { appts: 0, anywhere: {}, atOffice: {}, withAdvisor: {} };
+                perService[svc].appts++;
+                perService[svc].anywhere[aSid] = true;
+                if (inOffice) perService[svc].atOffice[aSid] = true;
+                if (withAdv) perService[svc].withAdvisor[aSid] = true;
+            }
+        }
+        function cnt(obj) { return Object.keys(obj).length; }
+        function pct(n) { return totalStudents > 0 ? ((n / totalStudents) * 100).toFixed(1) : '0.0'; }
+        var nAny = cnt(anywhere), nOff = cnt(atOffice), nAdv = cnt(withAdvisor);
+        var html = '<div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #dee2e6;">';
+        html += '<h3 style="color: #667eea; margin: 0 0 6px 0;">U Services — Student Reach</h3>';
+        html += '<p style="font-size: 12px; color: #6c757d; margin: 0 0 15px 0;">Caseload students with at least one appointment that included a "U-" service. "At Assigned Office" means the appointment location maps to one of the student\'s assigned offices; "With Assigned Advisor" means the appointment staff is one of the student\'s assigned advisors. Counts respect the current filters.</p>';
+        html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">';
+        html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">';
+        html += '<div style="font-size: 1.8em; font-weight: 700; color: #667eea;">' + nAny + '</div>';
+        html += '<div style="font-size: 0.9em; color: #6c757d; margin-top: 5px;">Students with U Service (Anywhere)</div>';
+        html += '<div style="font-size: 0.85em; color: #6c757d;">' + pct(nAny) + '% of caseload</div></div>';
+        html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">';
+        html += '<div style="font-size: 1.8em; font-weight: 700; color: #667eea;">' + nOff + '</div>';
+        html += '<div style="font-size: 0.9em; color: #6c757d; margin-top: 5px;">At an Assigned Office</div>';
+        html += '<div style="font-size: 0.85em; color: #6c757d;">' + pct(nOff) + '% of caseload</div></div>';
+        html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">';
+        html += '<div style="font-size: 1.8em; font-weight: 700; color: #667eea;">' + nAdv + '</div>';
+        html += '<div style="font-size: 0.9em; color: #6c757d; margin-top: 5px;">With an Assigned Advisor</div>';
+        html += '<div style="font-size: 0.85em; color: #6c757d;">' + pct(nAdv) + '% of caseload</div></div>';
+        html += '</div>';
+        // Per-service table, sorted by anywhere-student count desc
+        var svcNames = Object.keys(perService).sort(function(x, y) { return cnt(perService[y].anywhere) - cnt(perService[x].anywhere); });
+        if (svcNames.length) {
+            html += '<table class="data-table"><thead><tr>';
+            html += '<th style="text-align:left;">U- Service</th><th>Appointments</th><th>Students (Anywhere)</th><th>Students (At Assigned Office)</th><th>Students (With Assigned Advisor)</th>';
+            html += '</tr></thead><tbody>';
+            for (var vi = 0; vi < svcNames.length; vi++) {
+                var v = perService[svcNames[vi]];
+                html += '<tr><td style="text-align:left;">' + svcNames[vi] + '</td>';
+                html += '<td style="text-align:center;">' + v.appts + '</td>';
+                html += '<td style="text-align:center;">' + cnt(v.anywhere) + '</td>';
+                html += '<td style="text-align:center;">' + cnt(v.atOffice) + '</td>';
+                html += '<td style="text-align:center;">' + cnt(v.withAdvisor) + '</td></tr>';
+            }
+            html += '</tbody></table>';
+        } else {
+            html += '<div class="placeholder-message">No U- services found in the current data.</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
     function updateServicesTab() {
         var content = document.getElementById('services-content');
         if (!filteredAppointmentData || !filteredAppointmentData.length) {
@@ -6381,7 +6522,7 @@
             html += '</div>';
         }
 
-        content.innerHTML = html;
+        content.innerHTML = buildUServicesSection(servicesColumn, apptCols) + html;
     }
 
     // Sorting for advisor table
@@ -8530,7 +8671,9 @@ function exportForTableau() {
                             'Is First Appointment at Assigned Office': '',
                             'Next Semester Enrollment Status': nextSemStatusVal,
                             'Enrolled Next Semester': enrolledNextVal,
-                            'Enrollment Term': enrollmentIdSet ? enrollmentTermLabel : ''
+                            'Enrollment Term': enrollmentIdSet ? enrollmentTermLabel : '',
+                            'Has U Service': '',
+                            'U Services': ''
                         });
                     } else {
                         for (var ai2 = 0; ai2 < appts.length; ai2++) {
@@ -8611,7 +8754,9 @@ function exportForTableau() {
                                 'Is First Appointment at Assigned Office': isFirst,
                                 'Next Semester Enrollment Status': nextSemStatusVal,
                                 'Enrolled Next Semester': enrolledNextVal,
-                                'Enrollment Term': enrollmentIdSet ? enrollmentTermLabel : ''
+                                'Enrollment Term': enrollmentIdSet ? enrollmentTermLabel : '',
+                                'Has U Service': (function(){ var u = extractUServices(svcStr); return u.length ? 'Yes' : 'No'; })(),
+                                'U Services': extractUServices(svcStr).join('; ')
                             });
                         }
                     }
@@ -8633,7 +8778,9 @@ function exportForTableau() {
             'Is First Appointment at Assigned Office',
             'Next Semester Enrollment Status',
             'Enrolled Next Semester',
-            'Enrollment Term'
+            'Enrollment Term',
+            'Has U Service',
+            'U Services'
         ];
 
         var csv = columns.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
