@@ -1665,6 +1665,22 @@
     var servicesByLocation = new Map(); // Map of location -> Set of services
 
     // Office name aliases: maps old/alternate names to canonical names
+    // Shared helper: split a semicolon-separated multi-value field into a
+    // trimmed array. Used by the caseload alignment check (v8.5) and the
+    // U Services analysis (v8.6).
+    function parseSemicolonList(val) {
+        if (val === null || val === undefined) return [];
+        var s = String(val);
+        if (!s.trim()) return [];
+        var parts = s.split(';');
+        var out = [];
+        for (var i = 0; i < parts.length; i++) {
+            var p = parts[i].trim();
+            if (p) out.push(p);
+        }
+        return out;
+    }
+
     var officeNameAliases = {
         'CUNY 2X Tech Academy': 'CUNY 2X Tech Computer Science',
         'Veterans Services': 'Veteran Services',
