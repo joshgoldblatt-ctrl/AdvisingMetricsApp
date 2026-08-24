@@ -1,12 +1,46 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.6
+  Version:      8.8
   Released:     August 13, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.8  2026-08-13
+    - U Services export grain changed to per-appointment: one row per
+      student x assigned office x U-service x appointment, adding
+      "Appointment Date" and "Semester Week Number" columns (same week
+      definition as the main export) and removing "Appointment Count"
+      (instances of a service are now a simple COUNT of its rows).
+      "Received From Assigned Advisor" is now a per-appointment fact.
+      Blank rows for student-office pairs with no U-services are
+      unchanged. This supersedes the v8.7 file shape - regenerate any
+      previously exported U Services CSVs rather than mixing shapes in
+      the wildcard union folder.
+    - Internal: getSemesterStartDate / computeWeekNumber /
+      parseTableauDate hoisted to shared top-level functions.
+
+  v8.7  2026-08-13
+    - "Export U Services for Tableau" button (Overview tab, next to the
+      main Tableau export). Produces a service-level CSV: one row per
+      student x assigned office x U-service received AT that office
+      (appointment location maps to the office; Veterans naming and
+      the Math/Engineering dual-office cases handled), with an
+      Appointment Count and a "Received From Assigned Advisor" flag
+      (at least one of those appointments was with one of the
+      student's assigned advisors at that office). Student-office
+      pairs with no U-services get a blank row so office caseload
+      denominators compute natively in Tableau. Includes the
+      enrollment columns (Next Semester Enrollment Status / Enrolled
+      Next Semester / Enrollment Term), blank when no enrollment file
+      is loaded. Filename: tableau_uservices_<SEM>_<MM.DD.YY>.csv.
+      Keep these files in their own OneDrive folder - never union
+      them with the main advising export.
+    - Internal: enrollment-status helpers (currentGradStatus /
+      nextSemesterStatusFor) hoisted to shared top-level functions so
+      both exports use one implementation.
+
   v8.6  2026-08-13
     - U Services analysis. New student-anchored "U Services - Student
       Reach" section at the top of the Reported Services tab: counts of
@@ -306,7 +340,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.6</title>
+    <title>LaGuardia Advising Metrics App - Version 8.8</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1199,7 +1233,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 8.6 - Released August 13, 2026</div>
+            <div class="subtitle">Version 8.8 - Released August 13, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -1211,6 +1245,12 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.8 — August 13, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>U Services export: per-appointment grain with dates</strong> — The U Services export now emits one row per student × assigned office × U-service × appointment, adding "Appointment Date" and "Semester Week Number" columns (same week definition as the main export). "Appointment Count" is removed — instances of a service are a simple COUNT of its rows — and "Received From Assigned Advisor" is now a per-appointment fact. Blank rows for student-office pairs with no U-services are unchanged. This supersedes the v8.7 file shape; regenerate any previously exported U Services CSVs rather than mixing shapes in the union folder.</p>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.7 — August 13, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>U Services Tableau export</strong> — New "Export U Services for Tableau" button beside the main export. Produces a service-level CSV: one row per student × assigned office × U-service received at that office, with an Appointment Count and a "Received From Assigned Advisor" flag, plus blank rows for student-office pairs with no U-services so office denominators compute natively in Tableau. Includes the enrollment status columns (blank when no enrollment file is loaded). Store these files in their own OneDrive folder — never union them with the main advising export.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.6 — August 13, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>U Services analysis</strong> — New "U Services — Student Reach" section at the top of the Reported Services tab: distinct caseload students with at least one appointment including a "U-" service, at three attribution levels (anywhere / at an assigned office / with an assigned advisor), plus a per-service breakdown with appointment and student counts. U- services are prefix-matched so new ones are picked up automatically, and counts respect the app's filters. The Tableau export gains two columns: "Has U Service" (Yes/No per appointment row) and "U Services" (semicolon-joined list of that appointment's U- services).</p>
@@ -1527,6 +1567,7 @@
                     <h3>Overview Analysis</h3>
                     <button class="export-pdf-button" onclick="exportStudentData()">Export Student Data</button>
                     <button class="export-pdf-button" onclick="exportForTableau()" style="margin-left: 10px; background: #5a3d8a;">Export for Tableau</button>
+                    <button class="export-pdf-button" onclick="exportUServicesForTableau()" style="margin-left: 10px; background: #3d6a8a;">Export U Services for Tableau</button>
                     <div id="overview-content">
                         <div class="placeholder-message">
                             Upload both files and click "Run Analysis" to see the overview
@@ -1679,6 +1720,81 @@
             if (p) out.push(p);
         }
         return out;
+    }
+
+    // Shared enrollment-status helpers (v8.4 logic, hoisted in v8.7 so both
+    // Tableau exports use one implementation).
+    var SEPARATED_AWARDED = { 'Degree Awarded': true, 'Approved': true };
+    var SEPARATED_OTHER = { 'Applied for Graduation': true, 'Needs to Finish Pending Work': true, 'Program in Review': true };
+    function currentGradStatus(raw) {
+        var s = String(raw || '').trim();
+        if (!s) return '';
+        var parts = [];
+        var rawParts = s.split(';');
+        for (var pi = 0; pi < rawParts.length; pi++) {
+            var p = rawParts[pi].trim();
+            if (p) parts.push(p);
+        }
+        if (parts.length === 0) return '';
+        if (parts.length === 1) return parts[0];
+        // Second-degree rule: exactly one "Degree Awarded" -> use the other status
+        var nonDA = [];
+        for (var qi = 0; qi < parts.length; qi++) {
+            if (parts[qi] !== 'Degree Awarded') nonDA.push(parts[qi]);
+        }
+        if (parts.length - nonDA.length === 1 && nonDA.length === 1) return nonDA[0];
+        if (parts.length - nonDA.length === 1 && nonDA.length > 1) parts = nonDA;
+        // Otherwise prefer a separated-out status if any is present
+        for (var ri = 0; ri < parts.length; ri++) {
+            if (SEPARATED_AWARDED[parts[ri]]) return parts[ri];
+        }
+        for (var ti = 0; ti < parts.length; ti++) {
+            if (SEPARATED_OTHER[parts[ti]]) return parts[ti];
+        }
+        return parts[0];
+    }
+    function nextSemesterStatusFor(sid, gradRaw) {
+        var cur = currentGradStatus(gradRaw);
+        if (SEPARATED_AWARDED[cur]) return 'Degree Awarded/Approved';
+        if (SEPARATED_OTHER[cur]) return 'Graduation Status - Other';
+        return enrollmentIdSet.has(String(sid).trim()) ? 'Enrolled' : 'Not Enrolled';
+    }
+
+    // Shared date/week helpers (hoisted in v8.8 so both Tableau exports use one implementation).
+        function getSemesterStartDate(semesterLabel) {
+        // semesterLabel like "FA24" or "SP26"
+        var term = semesterLabel.substring(0, 2);
+        var yr = parseInt(semesterLabel.substring(2), 10);
+        var fullYear = 2000 + yr;
+        if (term === 'FA') return new Date(fullYear, 8, 1); // Sept 1
+        if (term === 'SP') return new Date(fullYear, 2, 1); // Mar 1
+        return null;
+    }
+        function computeWeekNumber(apptDate, semesterStart) {
+        if (!apptDate || !semesterStart) return '';
+        // Normalize both to midnight so the comparison is purely day-based.
+        var apptDay = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
+        var startDay = new Date(semesterStart.getFullYear(), semesterStart.getMonth(), semesterStart.getDate());
+        var diffMs = apptDay.getTime() - startDay.getTime();
+        var diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+        if (diffDays < 0) return ''; // appointment before semester start
+        return Math.floor(diffDays / 7) + 1;
+    }
+        function parseTableauDate(s) {
+        if (!s) return null;
+        var str = String(s).trim();
+        var parts = str.split('/');
+        if (parts.length === 3) {
+            var m = parseInt(parts[0], 10) - 1;
+            var d = parseInt(parts[1], 10);
+            var y = parseInt(parts[2], 10);
+            if (y < 100) y += 2000;
+            var dt = new Date(y, m, d);
+            if (!isNaN(dt.getTime())) return dt;
+        }
+        var dt2 = new Date(str);
+        if (!isNaN(dt2.getTime())) return dt2;
+        return null;
     }
 
     var officeNameAliases = {
@@ -8377,42 +8493,9 @@ function exportForTableau() {
         // Awarded", the OTHER status is the current one. Otherwise, prefer a
         // separated-out status if present.
         var gradStatusCol = findColumn(keys0, ['Graduation Status', 'Graduation_Status']);
-        var SEPARATED_AWARDED = { 'Degree Awarded': true, 'Approved': true };
-        var SEPARATED_OTHER = { 'Applied for Graduation': true, 'Needs to Finish Pending Work': true, 'Program in Review': true };
         var enrollmentTermLabel = enrollmentIdSet ? getEnrollmentTermLabel() : '';
-        function currentGradStatus(raw) {
-            var s = String(raw || '').trim();
-            if (!s) return '';
-            var parts = [];
-            var rawParts = s.split(';');
-            for (var pi = 0; pi < rawParts.length; pi++) {
-                var p = rawParts[pi].trim();
-                if (p) parts.push(p);
-            }
-            if (parts.length === 0) return '';
-            if (parts.length === 1) return parts[0];
-            // Second-degree rule: exactly one "Degree Awarded" -> use the other status
-            var nonDA = [];
-            for (var qi = 0; qi < parts.length; qi++) {
-                if (parts[qi] !== 'Degree Awarded') nonDA.push(parts[qi]);
-            }
-            if (parts.length - nonDA.length === 1 && nonDA.length === 1) return nonDA[0];
-            if (parts.length - nonDA.length === 1 && nonDA.length > 1) parts = nonDA;
-            // Otherwise prefer a separated-out status if any is present
-            for (var ri = 0; ri < parts.length; ri++) {
-                if (SEPARATED_AWARDED[parts[ri]]) return parts[ri];
-            }
-            for (var ti = 0; ti < parts.length; ti++) {
-                if (SEPARATED_OTHER[parts[ti]]) return parts[ti];
-            }
-            return parts[0];
-        }
-        function nextSemesterStatusFor(sid, gradRaw) {
-            var cur = currentGradStatus(gradRaw);
-            if (SEPARATED_AWARDED[cur]) return 'Degree Awarded/Approved';
-            if (SEPARATED_OTHER[cur]) return 'Graduation Status - Other';
-            return enrollmentIdSet.has(String(sid).trim()) ? 'Enrolled' : 'Not Enrolled';
-        }
+        // (v8.7: currentGradStatus / nextSemesterStatusFor hoisted to top level,
+        // shared with exportUServicesForTableau.)
 
         // v8.3: fallback map of Student ID -> Student Name from appointment data,
         // used only when the caseload file has no name column.
@@ -8432,25 +8515,7 @@ function exportForTableau() {
         // Week 1 starts on the semester start date itself. Each subsequent week
         // is a 7-day window from there. This gives consistent week numbering
         // independent of which day of the week the semester begins.
-        function getSemesterStartDate(semesterLabel) {
-            // semesterLabel like "FA24" or "SP26"
-            var term = semesterLabel.substring(0, 2);
-            var yr = parseInt(semesterLabel.substring(2), 10);
-            var fullYear = 2000 + yr;
-            if (term === 'FA') return new Date(fullYear, 8, 1); // Sept 1
-            if (term === 'SP') return new Date(fullYear, 2, 1); // Mar 1
-            return null;
-        }
-        function computeWeekNumber(apptDate, semesterStart) {
-            if (!apptDate || !semesterStart) return '';
-            // Normalize both to midnight so the comparison is purely day-based.
-            var apptDay = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
-            var startDay = new Date(semesterStart.getFullYear(), semesterStart.getMonth(), semesterStart.getDate());
-            var diffMs = apptDay.getTime() - startDay.getTime();
-            var diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-            if (diffDays < 0) return ''; // appointment before semester start
-            return Math.floor(diffDays / 7) + 1;
-        }
+        // (v8.8: getSemesterStartDate / computeWeekNumber hoisted to top level.)
         var semesterStartDate = getSemesterStartDate(currentSemester);
 
         // Reuse the same location-to-office mapping that buildIndexes uses.
@@ -8593,22 +8658,7 @@ function exportForTableau() {
         });
 
         // Helper to parse date (M/D/YYYY or other parseable formats)
-        function parseTableauDate(s) {
-            if (!s) return null;
-            var str = String(s).trim();
-            var parts = str.split('/');
-            if (parts.length === 3) {
-                var m = parseInt(parts[0], 10) - 1;
-                var d = parseInt(parts[1], 10);
-                var y = parseInt(parts[2], 10);
-                if (y < 100) y += 2000;
-                var dt = new Date(y, m, d);
-                if (!isNaN(dt.getTime())) return dt;
-            }
-            var dt2 = new Date(str);
-            if (!isNaN(dt2.getTime())) return dt2;
-            return null;
-        }
+        // (v8.8: parseTableauDate hoisted to top level.)
 
         // Build the export rows
         var exportRows = [];
@@ -8830,6 +8880,215 @@ function exportForTableau() {
     } catch (error) {
         console.error('Error exporting for Tableau:', error);
         alert('Failed to export Tableau file. Please check console for details.');
+    }
+}
+
+// Export U Services for Tableau (v8.8) - one row per student x assigned office
+// x U-service x appointment (received at that office), with Appointment Date
+// and Semester Week Number, plus blank rows for student-office pairs with no
+// U-services so caseload denominators stay intact. Instances of a service =
+// COUNT of its rows.
+function exportUServicesForTableau() {
+    try {
+        if (!filteredData || !idx) {
+            alert('No data available to export. Please run the analysis first.');
+            return;
+        }
+        if (!filteredAppointmentData || !filteredAppointmentData.length) {
+            alert('No appointment data available. Please load an appointment file and run the analysis first.');
+            return;
+        }
+
+        var caseloadCols = idx.caseloadCols;
+        var apptCols = idx.apptCols;
+        var currentSemester = getCurrentSemesterLabel();
+
+        var keys0 = Object.keys(filteredData[0]);
+        var uNameCol = findColumn(keys0, ['Student Name', 'Student_Name', 'Name']);
+        var gradStatusCol = findColumn(keys0, ['Graduation Status', 'Graduation_Status']);
+        var enrollmentTermLabel = enrollmentIdSet ? getEnrollmentTermLabel() : '';
+        var apptKeys0 = Object.keys(filteredAppointmentData[0]);
+        var servicesColumn = apptCols.services ? apptCols.services : findColumn(apptKeys0, ['Reported Services', 'Services', 'Reported_Services']);
+        if (!servicesColumn) {
+            alert('Could not find a Reported Services column in the appointment data.');
+            return;
+        }
+        var uDateCol = apptCols && apptCols.date ? apptCols.date : findColumn(apptKeys0, ['Reported Start Date', 'Start Date', 'Date', 'Appointment Date', 'Schedule Date']);
+        var uSemStart = getSemesterStartDate(currentSemester);
+        // Appointment-name fallback for Student Name (mirrors main export)
+        var uApptNameCol = findColumn(apptKeys0, ['Student Name', 'Student_Name', 'Name']);
+        var uApptNameBySid = {};
+        if (!uNameCol && uApptNameCol) {
+            for (var fni = 0; fni < filteredAppointmentData.length; fni++) {
+                var fnRow = filteredAppointmentData[fni];
+                var fnSid = fnRow[apptCols.studentId];
+                if (fnSid !== null && fnSid !== undefined && fnSid !== '' && !uApptNameBySid[fnSid] && fnRow[uApptNameCol]) {
+                    uApptNameBySid[fnSid] = String(fnRow[uApptNameCol]).trim();
+                }
+            }
+        }
+
+        function locationMapsToOffice(locStr, office) {
+            var loc = String(locStr || '').trim();
+            if (!loc) return false;
+            if (loc === office) return true;
+            if (normalizeOfficeName(loc) === office) return true;
+            if (loc === 'Veterans Services' && office === 'Veteran Services') return true;
+            if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') {
+                if (office === 'Careers in Engineering' || office === 'CUNY 2X Tech Computer Science') return true;
+            }
+            return false;
+        }
+
+        // Per-student structures from the caseload
+        var studentOrder = [];          // sids in caseload order
+        var studentSeen = {};
+        var studentName = {};
+        var studentGradRaw = {};
+        var studentOfficeList = {};     // sid -> [canonical offices, deduped, in order]
+        var officeStaff = {};           // sid -> { office -> { staffId: true } }
+        for (var ci = 0; ci < filteredData.length; ci++) {
+            var cRow = filteredData[ci];
+            var cSid = cRow[caseloadCols.studentId];
+            if (cSid === null || cSid === undefined || String(cSid).trim() === '') continue;
+            cSid = String(cSid).trim();
+            if (!studentSeen[cSid]) {
+                studentSeen[cSid] = true;
+                studentOrder.push(cSid);
+                studentName[cSid] = uNameCol ? (cRow[uNameCol] || '') : (uApptNameBySid[cSid] || '');
+                studentGradRaw[cSid] = gradStatusCol ? (cRow[gradStatusCol] || '') : '';
+                studentOfficeList[cSid] = [];
+                officeStaff[cSid] = {};
+            }
+            var offs = parseSemicolonList(cRow[caseloadCols.office]);
+            var sIds = parseSemicolonList(cRow[caseloadCols.staffId]);
+            for (var oi = 0; oi < offs.length; oi++) {
+                var offNorm = normalizeOfficeName(offs[oi]);
+                if (studentOfficeList[cSid].indexOf(offNorm) === -1) studentOfficeList[cSid].push(offNorm);
+                if (!officeStaff[cSid][offNorm]) officeStaff[cSid][offNorm] = {};
+                if (oi < sIds.length && String(sIds[oi]).trim() !== '') {
+                    officeStaff[cSid][offNorm][String(sIds[oi]).trim()] = true;
+                }
+            }
+        }
+
+        // Scan appointments: per-appointment service rows, grouped per (sid, office)
+        var rowsByPair = {};   // sid + '||' + office -> array of row fragments
+        for (var ai = 0; ai < filteredAppointmentData.length; ai++) {
+            var a = filteredAppointmentData[ai];
+            var uSvcs = extractUServices(a[servicesColumn]);
+            if (!uSvcs.length) continue;
+            var aSid = a[apptCols.studentId];
+            if (aSid === null || aSid === undefined || String(aSid).trim() === '') continue;
+            aSid = String(aSid).trim();
+            if (!studentSeen[aSid]) continue;
+            var aLoc = apptCols.office ? a[apptCols.office] : '';
+            var aStaffRaw = apptCols.staffId ? a[apptCols.staffId] : '';
+            var aStaff = (aStaffRaw === null || aStaffRaw === undefined) ? '' : String(aStaffRaw).trim();
+            var aDateStr = uDateCol ? String(a[uDateCol] === null || a[uDateCol] === undefined ? '' : a[uDateCol]).trim() : '';
+            var aDateObj = aDateStr ? parseTableauDate(aDateStr) : null;
+            var aWeek = aDateObj && uSemStart ? computeWeekNumber(aDateObj, uSemStart) : '';
+            var offListA = studentOfficeList[aSid];
+            for (var mo = 0; mo < offListA.length; mo++) {
+                var off = offListA[mo];
+                if (!locationMapsToOffice(aLoc, off)) continue;
+                var fromAssigned = aStaff !== '' && officeStaff[aSid][off] && officeStaff[aSid][off][aStaff] === true;
+                var pairKey = aSid + '||' + off;
+                if (!rowsByPair[pairKey]) rowsByPair[pairKey] = [];
+                for (var ui = 0; ui < uSvcs.length; ui++) {
+                    rowsByPair[pairKey].push({
+                        svc: uSvcs[ui],
+                        date: aDateStr,
+                        week: aWeek,
+                        fromAssigned: fromAssigned
+                    });
+                }
+            }
+        }
+
+        // Build rows: per (student, office), service rows or one blank row
+        var columns = [
+            'Semester', 'Student ID', 'Student Name', 'Assigned Office',
+            'U Service', 'Appointment Date', 'Semester Week Number',
+            'Received From Assigned Advisor',
+            'Next Semester Enrollment Status', 'Enrolled Next Semester', 'Enrollment Term'
+        ];
+        var csv = columns.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',') + '\n';
+        function pushRow(vals) {
+            csv += columns.map(function(col) {
+                var v = vals[col];
+                if (v === null || v === undefined) v = '';
+                return '"' + String(v).replace(/"/g, '""') + '"';
+            }).join(',') + '\n';
+        }
+        var rowCount = 0;
+        for (var siOrd = 0; siOrd < studentOrder.length; siOrd++) {
+            var sid = studentOrder[siOrd];
+            var nextSemStatusVal = '';
+            var enrolledNextVal = '';
+            if (enrollmentIdSet) {
+                nextSemStatusVal = nextSemesterStatusFor(sid, studentGradRaw[sid]);
+                enrolledNextVal = enrollmentIdSet.has(sid) ? 'Yes' : 'No';
+            }
+            var offList = studentOfficeList[sid];
+            for (var mo2 = 0; mo2 < offList.length; mo2++) {
+                var off2 = offList[mo2];
+                var pairRows = rowsByPair[sid + '||' + off2];
+                if (pairRows && pairRows.length) {
+                    for (var pr = 0; pr < pairRows.length; pr++) {
+                        pushRow({
+                            'Semester': currentSemester,
+                            'Student ID': sid,
+                            'Student Name': studentName[sid],
+                            'Assigned Office': off2,
+                            'U Service': pairRows[pr].svc,
+                            'Appointment Date': pairRows[pr].date,
+                            'Semester Week Number': pairRows[pr].week,
+                            'Received From Assigned Advisor': pairRows[pr].fromAssigned ? 'Yes' : 'No',
+                            'Next Semester Enrollment Status': nextSemStatusVal,
+                            'Enrolled Next Semester': enrolledNextVal,
+                            'Enrollment Term': enrollmentIdSet ? enrollmentTermLabel : ''
+                        });
+                        rowCount++;
+                    }
+                } else {
+                    pushRow({
+                        'Semester': currentSemester,
+                        'Student ID': sid,
+                        'Student Name': studentName[sid],
+                        'Assigned Office': off2,
+                        'U Service': '',
+                        'Appointment Date': '',
+                        'Semester Week Number': '',
+                        'Received From Assigned Advisor': '',
+                        'Next Semester Enrollment Status': nextSemStatusVal,
+                        'Enrolled Next Semester': enrolledNextVal,
+                        'Enrollment Term': enrollmentIdSet ? enrollmentTermLabel : ''
+                    });
+                    rowCount++;
+                }
+            }
+        }
+
+        var now = new Date();
+        var mm = String(now.getMonth() + 1).padStart(2, '0');
+        var dd = String(now.getDate()).padStart(2, '0');
+        var yy = String(now.getFullYear()).slice(-2);
+        var filename = 'tableau_uservices_' + currentSemester + '_' + mm + '.' + dd + '.' + yy + '.csv';
+
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a2 = document.createElement('a');
+        a2.href = url;
+        a2.download = filename;
+        document.body.appendChild(a2);
+        a2.click();
+        document.body.removeChild(a2);
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error('Error exporting U Services for Tableau:', error);
+        alert('Failed to export U Services file. Please check console for details.');
     }
 }
 
