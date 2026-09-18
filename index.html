@@ -1,12 +1,37 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.8
-  Released:     August 13, 2026
+  Version:      8.9
+  Released:     September 18, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.9  2026-09-18
+    - Population change support (caseload files now built from the official
+      IR roster via Caseload File Generator v3.9.12+):
+      * Tracked offices consolidated into one TRACKED_OFFICES constant
+        (was five separate hard-coded lists) and extended with
+        "Health Sciences", "Paramedic" and "No Assigned Office".
+      * Caseload rows with a blank Advising Office are assigned
+        "No Assigned Office" on load (official students with no
+        professional advisor who are not in the clinical phase).
+      * Generator placeholders in the Health Sciences advisor slot
+        ("Health Sciences (no advisor)" / Staff ID "N/A") are stripped on
+        load and treated as no advisor: they never appear as an advisor
+        in tables or in the Tableau export.
+      * Any-location interpretation for offices with no Navigate
+        appointment location (Health Sciences, No Assigned Office): a
+        student in such an office is credited with "met at assigned
+        office" for an appointment at any location. Implemented by
+        wrapping every location->office normalizer and the boolean
+        location checks, so the in-app tables, the main export and the
+        U Services export all agree. Selecting one of these offices in
+        the office filter no longer restricts appointments by location.
+      * Paramedic added to the office->location filter map
+        ("Paramedic", "Paramedic Program") - verify against appointment
+        locations on first use.
+
   v8.8  2026-08-13
     - U Services export grain changed to per-appointment: one row per
       student x assigned office x U-service x appointment, adding
@@ -340,7 +365,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.8</title>
+    <title>LaGuardia Advising Metrics App - Version 8.9</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1233,7 +1258,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 8.8 - Released August 13, 2026</div>
+            <div class="subtitle">Version 8.9 - Released September 18, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -1245,6 +1270,9 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.9 — September 18, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Official-roster population support</strong> — Caseload files built from the official IR roster (Caseload File Generator v3.9.12+) now flow through correctly. Tracked offices are consolidated into one list and extended with Health Sciences, Paramedic, and No Assigned Office; rows with a blank Advising Office are assigned "No Assigned Office" on load; generator placeholder advisors for the Health Sciences slot are treated as no advisor and never appear in tables or exports. For offices with no Navigate appointment location (Health Sciences, No Assigned Office), a student is credited with "met at assigned office" for an appointment at any location, consistently across in-app tables and both Tableau exports.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.8 — August 13, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>U Services export: per-appointment grain with dates</strong> — The U Services export now emits one row per student × assigned office × U-service × appointment, adding "Appointment Date" and "Semester Week Number" columns (same week definition as the main export). "Appointment Count" is removed — instances of a service are a simple COUNT of its rows — and "Received From Assigned Advisor" is now a per-appointment fact. Blank rows for student-office pairs with no U-services are unchanged. This supersedes the v8.7 file shape; regenerate any previously exported U Services CSVs rather than mixing shapes in the union folder.</p>
@@ -1797,6 +1825,63 @@
         return null;
     }
 
+    // v8.9: single source of truth for tracked offices. Health Sciences and
+    // Paramedic arrive from Caseload File Generator v3.9.12+; No Assigned Office
+    // is assigned by this app to caseload rows with a blank Advising Office.
+    var TRACKED_OFFICES = [
+        'ASAP', 'Careers in Engineering', 'College Discovery',
+        'CUNY 2X Tech Computer Science', 'International Student Services',
+        'Student Advising Services', 'Veteran Services',
+        'Health Sciences', 'Paramedic', 'No Assigned Office'
+    ];
+    // Offices with no Navigate appointment location: a student in one of these
+    // is credited with "met at assigned office" for an appointment at ANY
+    // location (any-location interpretation).
+    var NO_LOCATION_OFFICES = ['Health Sciences', 'No Assigned Office'];
+    var NO_OFFICE_LABEL = 'No Assigned Office';
+    // Placeholders emitted by Caseload File Generator v3.9.13+ in the Health
+    // Sciences advisor/staff-ID slot; treated here as "no advisor".
+    var PLACEHOLDER_ADVISOR = 'Health Sciences (no advisor)';
+    var PLACEHOLDER_STAFF_ID = 'N/A';
+    function isNoLocationOffice(office) { return NO_LOCATION_OFFICES.indexOf(office) !== -1; }
+    function setHasNoLocationOffice(officeSet) {
+        for (var i = 0; i < NO_LOCATION_OFFICES.length; i++) { if (officeSet.has(NO_LOCATION_OFFICES[i])) return true; }
+        return false;
+    }
+    // Wrap a location->offices normalizer so any real location also maps to
+    // the no-location offices.
+    function wrapNoLocation(fn) {
+        return function(location) {
+            var r = fn(location);
+            return (r && r.length) ? r.concat(NO_LOCATION_OFFICES) : r;
+        };
+    }
+    // Normalize caseload rows on load: blank office -> No Assigned Office;
+    // strip trailing generator placeholders from the advisor / staff-ID lists
+    // (they only ever occupy the last, Health Sciences, position).
+    function normalizeCaseloadRows(data) {
+        if (!data || !data.length) return;
+        var cols = getColumnMappings(Object.keys(data[0]));
+        for (var i = 0; i < data.length; i++) {
+            var row = data[i];
+            if (cols.office) {
+                var ov = row[cols.office];
+                if (ov === null || ov === undefined || !String(ov).trim()) row[cols.office] = NO_OFFICE_LABEL;
+            }
+            if (cols.advisor) {
+                var advs = parseSemicolonList(row[cols.advisor]);
+                var ids = cols.staffId ? parseSemicolonList(row[cols.staffId]) : [];
+                var changed = false;
+                while (advs.length && advs[advs.length - 1] === PLACEHOLDER_ADVISOR) { advs.pop(); changed = true; }
+                while (ids.length && String(ids[ids.length - 1]).toUpperCase() === PLACEHOLDER_STAFF_ID) { ids.pop(); changed = true; }
+                if (changed) {
+                    row[cols.advisor] = advs.join('; ');
+                    if (cols.staffId) row[cols.staffId] = ids.join('; ');
+                }
+            }
+        }
+    }
+
     var officeNameAliases = {
         'CUNY 2X Tech Academy': 'CUNY 2X Tech Computer Science',
         'Veterans Services': 'Veteran Services',
@@ -2216,6 +2301,7 @@
                     return;
                 }
                 caseloadData = results.data || [];
+                normalizeCaseloadRows(caseloadData);
                 if (!caseloadData.length) {
                     statusDiv.className = 'file-status error';
                     statusDiv.textContent = 'No data found in file';
@@ -2563,6 +2649,7 @@
             complete: function(results) {
                 if (results.data && results.data.length > 0) {
                     prevCaseloadData = results.data;
+                    normalizeCaseloadRows(prevCaseloadData);
                     statusEl.textContent = '✓ ' + results.data.length + ' rows loaded';
                     statusEl.className = 'file-status success';
                 } else {
@@ -3219,6 +3306,7 @@
             // Default: return the location as-is
             return [loc];
         }
+        normalizeOfficeLocation = wrapNoLocation(normalizeOfficeLocation);
 
         // Process appointments
         for (var j = 0; j < appointmentRows.length; j++) {
@@ -3444,11 +3532,7 @@
         // Office Student Type Distribution table
         var caseloadCols2 = idx.caseloadCols;
         if (caseloadCols2.studentType) {
-            var stDistTrackedOffices = new Set([
-                'ASAP', 'Careers in Engineering', 'College Discovery',
-                'CUNY 2X Tech Computer Science', 'International Student Services',
-                'Student Advising Services', 'Veteran Services'
-            ]);
+            var stDistTrackedOffices = new Set(TRACKED_OFFICES);
             var stTypes = ['New', 'Transfer', 'Continuing', 'Readmit', 'Not Found'];
             var officeSTDist = {}; // office -> { New: n, Transfer: n, ... Total: n }
             var grandSTDist = {}; // student type -> count (deduplicated)
@@ -4388,11 +4472,7 @@
         var officeToAdvisors = idxToUse.officeToAdvisors;
         var advisingStaffByStudent = idxToUse.advisingStaffByStudent || idxToUse.staffByStudent;
 
-        var trackedOffices = new Set([
-            'ASAP', 'Careers in Engineering', 'College Discovery',
-            'CUNY 2X Tech Computer Science', 'International Student Services',
-            'Student Advising Services', 'Veteran Services'
-        ]);
+        var trackedOffices = new Set(TRACKED_OFFICES);
 
         var officeStats = {};
         var uniqueStudents = new Set();
@@ -4488,11 +4568,7 @@
         var advisingApptsByStudent = idxToUse.advisingApptsByStudent || idxToUse.apptsByStudent;
         var officeToAdvisors = idxToUse.officeToAdvisors;
 
-        var trackedOffices = new Set([
-            'ASAP', 'Careers in Engineering', 'College Discovery',
-            'CUNY 2X Tech Computer Science', 'International Student Services',
-            'Student Advising Services', 'Veteran Services'
-        ]);
+        var trackedOffices = new Set(TRACKED_OFFICES);
 
         function parseSemicolonList(val) {
             if (val === null || val === undefined) return [];
@@ -4662,11 +4738,7 @@
         var apptCols = idxToUse.apptCols;
         var officeToAdvisors = idxToUse.officeToAdvisors;
 
-        var trackedOffices = new Set([
-            'ASAP', 'Careers in Engineering', 'College Discovery',
-            'CUNY 2X Tech Computer Science', 'International Student Services',
-            'Student Advising Services', 'Veteran Services'
-        ]);
+        var trackedOffices = new Set(TRACKED_OFFICES);
 
         function parseSemicolonList(val) {
             if (val === null || val === undefined) return [];
@@ -4682,6 +4754,7 @@
             if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [loc];
         }
+        normalizeOfficeLocation = wrapNoLocation(normalizeOfficeLocation);
 
         // Build map: studentId -> office -> count of appointments within that office
         var studentOfficeApptCounts = {}; // sid -> { officeName: count }
@@ -4907,6 +4980,7 @@
                 if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
                 return [loc];
             }
+            ftNormalizeLoc = wrapNoLocation(ftNormalizeLoc);
             var ftServCols = ['Reported Services', 'Reported_Services'];
             var ftApptData = filteredAppointmentData || [];
             var ftServCol = ftApptData.length > 0 ? findColumn(Object.keys(ftApptData[0]), ftServCols) : null;
@@ -5295,15 +5369,7 @@
         }
 
         // List of offices to show in the main table
-        var trackedOffices = new Set([
-            'ASAP',
-            'Careers in Engineering',
-            'College Discovery',
-            'CUNY 2X Tech Computer Science',
-            'International Student Services',
-            'Student Advising Services',
-            'Veteran Services'
-        ]);
+        var trackedOffices = new Set(TRACKED_OFFICES);
 
         // Track stats per office (now including ALL students assigned to each office)
         var officeStats = {};
@@ -6133,7 +6199,8 @@
             var officeToLocationMap = {
                 'Careers in Engineering': ['Math, Engineering & Computer Science', 'Math, Engineering and Computer Science', 'Careers in Engineering'],
                 'CUNY 2X Tech Computer Science': ['Math, Engineering & Computer Science', 'Math, Engineering and Computer Science', 'CUNY 2X Tech Computer Science'],
-                'Veteran Services': ['Veterans Services', 'Veteran Services']
+                'Veteran Services': ['Veterans Services', 'Veteran Services'],
+                'Paramedic': ['Paramedic', 'Paramedic Program']
             };
             
             for (var ofi = 0; ofi < officeFilter.length; ofi++) {
@@ -6147,6 +6214,10 @@
             locationFilter = Array.from(new Set(locationFilter));
         }
 
+        // v8.9: a selected no-location office has appointments anywhere; skip the location restriction
+        var ofNoLoc = false;
+        for (var nli = 0; nli < officeFilter.length; nli++) { if (isNoLocationOffice(officeFilter[nli])) ofNoLoc = true; }
+        if (ofNoLoc) locationFilter = [];
         // Filter appointments by location if office filter is applied
         var appointmentsToUse = filteredAppointmentData;
         if (locationFilter.length > 0) {
@@ -6442,6 +6513,7 @@
         if (officeSet.has(loc)) return true;
         var norm = normalizeOfficeName(loc);
         if (officeSet.has(norm)) return true;
+        if (setHasNoLocationOffice(officeSet)) return true; // v8.9 any-location
         if (loc === 'Veterans Services' && officeSet.has('Veteran Services')) return true;
         if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') {
             if (officeSet.has('Careers in Engineering') || officeSet.has('CUNY 2X Tech Computer Science')) return true;
@@ -6867,6 +6939,7 @@
             if (s === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [s];
         }
+        normalizeApptLocation = wrapNoLocation(normalizeApptLocation);
 
         // For each student+office pair, find the earliest appointment AT that office
         // Also track overall first appointment (at any assigned office) for the Total column
@@ -8379,6 +8452,7 @@ function exportStudentData() {
                     var locStr = String(apptLoc).trim();
                     // Check direct match
                     if (assignedOfficeNames.has(locStr)) { apptCountWithinOffice++; continue; }
+                    if (setHasNoLocationOffice(assignedOfficeNames)) { apptCountWithinOffice++; continue; } // v8.9 any-location
                     // Check normalized mappings
                     if (locStr === 'Veterans Services' && assignedOfficeNames.has('Veteran Services')) { apptCountWithinOffice++; continue; }
                     if (locStr === 'Math, Engineering & Computer Science' || locStr === 'Math, Engineering and Computer Science') {
@@ -8527,6 +8601,7 @@ function exportForTableau() {
             if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [loc];
         }
+        normalizeApptLocationToOffices = wrapNoLocation(normalizeApptLocationToOffices);
 
         function parseSemicolonList(val) {
             if (val === null || val === undefined) return [];
@@ -8932,6 +9007,7 @@ function exportUServicesForTableau() {
             var loc = String(locStr || '').trim();
             if (!loc) return false;
             if (loc === office) return true;
+            if (isNoLocationOffice(office)) return true; // v8.9 any-location
             if (normalizeOfficeName(loc) === office) return true;
             if (loc === 'Veterans Services' && office === 'Veteran Services') return true;
             if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') {
