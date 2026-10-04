@@ -1,12 +1,33 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.9
-  Released:     September 18, 2026
+  Version:      8.10
+  Released:     October 4, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.10  2026-10-04
+    - Admit Type support. Caseload File Generator v3.9.19 renamed the
+      "Student Type" column to "Admit Type" and changed the buckets to
+      Freshmen / New Transfer / Continuing / Readmit. Before this change the
+      Metrics App only looked for "Student Type", so a 3.9.19+ caseload
+      produced no Student Type filter, no New/Continuing breakouts, and a
+      blank "Student Type" column in the Tableau export.
+      * Column detection now accepts "Admit Type", "Admission Type",
+        "Admit_Type", then the legacy "Student Type" variants, for both the
+        current and prior-semester caseloads.
+      * getStudentTypeGroup(): Freshmen and New Transfer group as "New";
+        Continuing and Readmit as "Continuing". Legacy values New / Transfer
+        still group as "New" so older semester files behave as before.
+      * Overview "Students by Office and Student Type" and "Analysis by
+        Student Type" order the new values first, then legacy values, then
+        Not Found.
+      * Tableau export column names are unchanged ("Student Type",
+        "Student Type Group") so the wildcard union with earlier semester
+        exports keeps working. The "Student Type" column now carries the
+        Admit Type value verbatim (e.g. "Freshmen").
+      * Calculation Methodology panel updated.
   v8.9  2026-09-18
     - Population change support (caseload files now built from the official
       IR roster via Caseload File Generator v3.9.12+):
@@ -365,7 +386,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.9</title>
+    <title>LaGuardia Advising Metrics App - Version 8.10</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1258,7 +1279,7 @@
 
         <div class="header">
             <h1>📚 LaGuardia Advising Metrics App</h1>
-            <div class="subtitle">Version 8.9 - Released September 18, 2026</div>
+            <div class="subtitle">Version 8.10 - Released October 4, 2026</div>
             <div class="subtitle">Developed by Josh Goldblatt using Claude</div>
         </div>
 
@@ -1270,6 +1291,9 @@
             <div id="update-history-panel" style="display: none; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0 0 10px 10px; padding: 25px 30px; font-size: 14px; line-height: 1.7; color: #333;">
 
                 <h3 style="color: #667eea; margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.10 — October 4, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>Admit Type support</strong> — Caseload files from Caseload File Generator v3.9.19+ name the column "Admit Type" with buckets Freshmen / New Transfer / Continuing / Readmit. The app now detects "Admit Type", "Admission Type", or the legacy "Student Type"; Freshmen and New Transfer group as New, Continuing and Readmit as Continuing, and legacy New / Transfer values still work. Tableau export column names ("Student Type", "Student Type Group") are unchanged so earlier semester exports still union cleanly.</p>
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Version 8.9 — September 18, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>Official-roster population support</strong> — Caseload files built from the official IR roster (Caseload File Generator v3.9.12+) now flow through correctly. Tracked offices are consolidated into one list and extended with Health Sciences, Paramedic, and No Assigned Office; rows with a blank Advising Office are assigned "No Assigned Office" on load; generator placeholder advisors for the Health Sciences slot are treated as no advisor and never appear in tables or exports. For offices with no Navigate appointment location (Health Sciences, No Assigned Office), a student is credited with "met at assigned office" for an appointment at any location, consistently across in-app tables and both Tableau exports.</p>
@@ -1398,8 +1422,9 @@
 
                 <h4 style="color: #2c3e50; margin: 20px 0 8px 0; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;">Student Type Grouping</h4>
                 <p style="margin: 0 0 8px 0;">Students are grouped into two main categories for breakout analysis:</p>
-                <p style="margin: 0 0 4px 0;"><strong>New</strong> — Includes students with a Student Type of "New" or "Transfer"</p>
-                <p style="margin: 0 0 4px 0;"><strong>Continuing</strong> — Includes students with a Student Type of "Continuing" or "Readmit"</p>
+                <p style="margin: 0 0 4px 0;"><strong>New</strong> — Includes students with an Admit Type of "Freshmen" or "New Transfer" (legacy Student Type values "New" or "Transfer")</p>
+                <p style="margin: 0 0 4px 0;"><strong>Continuing</strong> — Includes students with an Admit Type of "Continuing" or "Readmit"</p>
+                <p style="margin: 0 0 8px 0;">The caseload column may be named "Admit Type" (Caseload File Generator v3.9.19+), "Admission Type", or "Student Type" (older files). Export columns keep the names "Student Type" and "Student Type Group" so multi-semester Tableau unions stay stable.</p>
                 <p style="margin: 0 0 8px 0;"><strong>Not Found</strong> — Shown as its own category in the overview but not included in the New or Continuing groups</p>
                 <p style="margin: 0 0 8px 0;">All students, regardless of Student Type, are included in overall/total calculations.</p>
 
@@ -2916,7 +2941,10 @@
         mappings.staffId = findColumn(keys, staffIdColumns) || 'Staff ID';
 
         // Student Type
-        var studentTypeColumns = ['Student Type', 'Student_Type', 'StudentType'];
+        // v8.10: Caseload File Generator v3.9.19+ emits "Admit Type" (buckets
+        // Freshmen / New Transfer / Continuing / Readmit). Older files use
+        // "Student Type" (New / Transfer / Continuing / Readmit). Accept both.
+        var studentTypeColumns = ['Admit Type', 'Admission Type', 'Admit_Type', 'Student Type', 'Student_Type', 'StudentType'];
         mappings.studentType = findColumn(keys, studentTypeColumns);
 
         // Date
@@ -2930,7 +2958,9 @@
     function getStudentTypeGroup(studentTypeVal) {
         if (!studentTypeVal) return null;
         var val = String(studentTypeVal).trim();
-        if (val === 'New' || val === 'Transfer') return 'New';
+        // v8.10: Admit Type values (Freshmen, New Transfer) group alongside the
+        // legacy Student Type values (New, Transfer).
+        if (val === 'New' || val === 'Transfer' || val === 'Freshmen' || val === 'New Transfer') return 'New';
         if (val === 'Continuing' || val === 'Readmit') return 'Continuing';
         return null;
     }
@@ -3533,7 +3563,7 @@
         var caseloadCols2 = idx.caseloadCols;
         if (caseloadCols2.studentType) {
             var stDistTrackedOffices = new Set(TRACKED_OFFICES);
-            var stTypes = ['New', 'Transfer', 'Continuing', 'Readmit', 'Not Found'];
+            var stTypes = ['Freshmen', 'New Transfer', 'New', 'Transfer', 'Continuing', 'Readmit', 'Not Found']; // v8.10: Admit Type + legacy values
             var officeSTDist = {}; // office -> { New: n, Transfer: n, ... Total: n }
             var grandSTDist = {}; // student type -> count (deduplicated)
             var grandUnique = new Set();
@@ -3680,7 +3710,7 @@
         var studentTypeAnalytics = calculateStudentTypeAnalytics();
         if (studentTypeAnalytics && Object.keys(studentTypeAnalytics).length > 0) {
             overviewHTML += '<h4 style="margin-top: 30px; margin-bottom: 10px; color: #2c3e50;">📊 Analysis by Student Type</h4>';
-            var stOrder = ['New', 'Transfer', 'Continuing', 'Readmit', 'Not Found'];
+            var stOrder = ['Freshmen', 'New Transfer', 'New', 'Transfer', 'Continuing', 'Readmit', 'Not Found']; // v8.10
             var stKeys = stOrder.filter(function(k) { return studentTypeAnalytics[k]; });
             // Add any remaining keys not in order
             Object.keys(studentTypeAnalytics).forEach(function(k) { if (stKeys.indexOf(k) === -1) stKeys.push(k); });
