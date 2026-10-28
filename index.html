@@ -1,12 +1,29 @@
 <!--
 ================================================================================
   App:          LaGuardia Advising Metrics App
-  Version:      8.13
-  Released:     October 7, 2026
+  Version:      8.14
+  Released:     October 28, 2026
   Developed by: Josh Goldblatt using Claude
 ================================================================================
   CHANGELOG (most recent first)
 --------------------------------------------------------------------------------
+  v8.14  2026-10-28
+    - New advising office "CIE Integrated Advising" (Caseload File Generator
+      v3.9.24 / Lite 2.1 emit it for the four "Academic Advisor - CIE - ..."
+      roles; "Careers in Engineering" remains a separate office for
+      FA24-SP26 files).
+      * Added to TRACKED_OFFICES.
+      * Appointment location "Math, Engineering & Computer Science" / "Math,
+        Engineering and Computer Science" now credits any of Careers in
+        Engineering, CUNY 2X Tech Computer Science, or CIE Integrated
+        Advising. The CIE advisors have no appointments yet; if Navigate
+        gives them their own location, a location whose name equals the
+        office name already matches with no code change.
+      * The eleven places that hard-coded that location's office list are
+        consolidated onto one constant, MEC_LOCATION_OFFICES, with helpers
+        isMecLocation() / setHasMecOffice(); the office->location filter
+        map gets a CIE entry.
+    - No change to calculations, column names, or the advising calendar.
   v8.13  2026-10-07
     - UI moved to the LaGuardia Standard Design (no logic, ID, or export
       changes):
@@ -434,7 +451,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LaGuardia Advising Metrics App - Version 8.13</title>
+    <title>LaGuardia Advising Metrics App - Version 8.14</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -694,8 +711,8 @@ input[type=checkbox]{accent-color:var(--accent)}
                     <p class="subtitle">Advising coverage by office and advisor from a caseload file and a Navigate appointment report, with Tableau exports.</p>
                 </div>
                 <div class="meta-box">
-                    <b>Version:</b><span>8.13</span>
-                    <b>Released:</b><span>October 7, 2026</span>
+                    <b>Version:</b><span>8.14</span>
+                    <b>Released:</b><span>October 28, 2026</span>
                     <b>Developed by:</b><span>Josh Goldblatt using Claude</span>
                 </div>
             </div>
@@ -709,6 +726,9 @@ input[type=checkbox]{accent-color:var(--accent)}
             <div id="update-history-panel" class="info-panel" style="display: none;">
 
                 <h3 style="color: var(--ink); margin: 0 0 20px 0; font-size: 18px;">Update History</h3>
+
+                <h4 style="color: var(--ink); margin: 20px 0 8px 0; border-bottom: 1px solid var(--line); padding-bottom: 5px;">Version 8.14 — October 28, 2026</h4>
+                <p style="margin: 0 0 4px 0;"><strong>CIE Integrated Advising</strong> — New tracked office from Caseload File Generator 3.9.24 (roles Academic Advisor – CIE – Engineering / Business &amp; Healthcare Management / Green Jobs / Psychology). The "Math, Engineering and Computer Science" appointment location now credits Careers in Engineering, CUNY 2X Tech Computer Science, or CIE Integrated Advising, whichever the student is assigned to; a Navigate location named exactly "CIE Integrated Advising" also matches. Careers in Engineering stays as its own office for earlier semesters. The location-to-office rule is now one constant instead of eleven copies.</p>
 
                 <h4 style="color: var(--ink); margin: 20px 0 8px 0; border-bottom: 1px solid var(--line); padding-bottom: 5px;">Version 8.13 — October 7, 2026</h4>
                 <p style="margin: 0 0 4px 0;"><strong>Standard design</strong> — The interface now follows the LaGuardia Standard Design: paper background, Fraunces headings with Source Sans 3 body text, the standard header with a meta-box, pill tabs, primary / secondary / neutral buttons, badges, and token-based tables, stat cards and bar charts. No calculations, IDs, or export files changed.</p>
@@ -1264,11 +1284,19 @@ input[type=checkbox]{accent-color:var(--accent)}
     // Paramedic arrive from Caseload File Generator v3.9.12+; No Assigned Office
     // is assigned by this app to caseload rows with a blank Advising Office.
     var TRACKED_OFFICES = [
-        'ASAP', 'Careers in Engineering', 'College Discovery',
+        'ASAP', 'Careers in Engineering', 'CIE Integrated Advising', 'College Discovery',
         'CUNY 2X Tech Computer Science', 'International Student Services',
         'Student Advising Services', 'Veteran Services',
         'Health Sciences', 'Paramedic', 'No Assigned Office'
     ];
+    // v8.14: the shared "Math, Engineering & Computer Science" Navigate location
+    // serves these offices. An appointment there is credited to whichever of
+    // them the student is assigned to. One place to edit when an office is
+    // added or renamed.
+    var MEC_LOCATION_NAMES = ['Math, Engineering & Computer Science', 'Math, Engineering and Computer Science'];
+    var MEC_LOCATION_OFFICES = ['Careers in Engineering', 'CUNY 2X Tech Computer Science', 'CIE Integrated Advising'];
+    function isMecLocation(loc) { return MEC_LOCATION_NAMES.indexOf(String(loc || '').trim()) !== -1; }
+    function setHasMecOffice(set) { for (var i = 0; i < MEC_LOCATION_OFFICES.length; i++) { if (set.has(MEC_LOCATION_OFFICES[i])) return true; } return false; }
     // Offices with no Navigate appointment location: a student in one of these
     // is credited with "met at assigned office" for an appointment at ANY
     // location (any-location interpretation).
@@ -2787,8 +2815,8 @@ input[type=checkbox]{accent-color:var(--accent)}
             }
             
             // Map "Math, Engineering & Computer Science" to both engineering programs
-            if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') {
-                return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (isMecLocation(loc)) {
+                return MEC_LOCATION_OFFICES.slice();
             }
 
             // Map old office name to new
@@ -4243,7 +4271,7 @@ input[type=checkbox]{accent-color:var(--accent)}
             if (!location) return [];
             var loc = String(location).trim();
             if (loc === 'Veterans Services') return ['Veteran Services'];
-            if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (isMecLocation(loc)) return MEC_LOCATION_OFFICES.slice();
             if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [loc];
         }
@@ -4469,7 +4497,7 @@ input[type=checkbox]{accent-color:var(--accent)}
                 if (!location) return [];
                 var loc = String(location).trim();
                 if (loc === 'Veterans Services') return ['Veteran Services'];
-                if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+                if (isMecLocation(loc)) return MEC_LOCATION_OFFICES.slice();
                 if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
                 return [loc];
             }
@@ -5691,6 +5719,7 @@ input[type=checkbox]{accent-color:var(--accent)}
         if (officeFilter.length > 0) {
             var officeToLocationMap = {
                 'Careers in Engineering': ['Math, Engineering & Computer Science', 'Math, Engineering and Computer Science', 'Careers in Engineering'],
+                'CIE Integrated Advising': ['Math, Engineering & Computer Science', 'Math, Engineering and Computer Science', 'CIE Integrated Advising'],
                 'CUNY 2X Tech Computer Science': ['Math, Engineering & Computer Science', 'Math, Engineering and Computer Science', 'CUNY 2X Tech Computer Science'],
                 'Veteran Services': ['Veterans Services', 'Veteran Services'],
                 'Paramedic': ['Paramedic', 'Paramedic Program']
@@ -6008,8 +6037,8 @@ input[type=checkbox]{accent-color:var(--accent)}
         if (officeSet.has(norm)) return true;
         if (setHasNoLocationOffice(officeSet)) return true; // v8.9 any-location
         if (loc === 'Veterans Services' && officeSet.has('Veteran Services')) return true;
-        if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') {
-            if (officeSet.has('Careers in Engineering') || officeSet.has('CUNY 2X Tech Computer Science')) return true;
+        if (isMecLocation(loc)) {
+            if (setHasMecOffice(officeSet)) return true;
         }
         return false;
     }
@@ -6428,7 +6457,7 @@ input[type=checkbox]{accent-color:var(--accent)}
             if (!loc) return [];
             var s = String(loc).trim();
             if (s === 'Veterans Services') return ['Veteran Services'];
-            if (s === 'Math, Engineering & Computer Science' || s === 'Math, Engineering and Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (isMecLocation(s)) return MEC_LOCATION_OFFICES.slice();
             if (s === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [s];
         }
@@ -7938,7 +7967,7 @@ function exportStudentData() {
                 // Build set of normalized office names including mappings
                 var assignedOfficeNames = new Set(officeListExport);
                 // Add location-name variants
-                var locationToOffice = { 'Veterans Services': 'Veteran Services', 'Math, Engineering & Computer Science': ['Careers in Engineering', 'CUNY 2X Tech Computer Science'], 'Math, Engineering and Computer Science': ['Careers in Engineering', 'CUNY 2X Tech Computer Science'] };
+                var locationToOffice = { 'Veterans Services': 'Veteran Services', 'Math, Engineering & Computer Science': MEC_LOCATION_OFFICES.slice(), 'Math, Engineering and Computer Science': MEC_LOCATION_OFFICES.slice() }; // v8.14
                 for (var ai2 = 0; ai2 < advisingAppts.length; ai2++) {
                     var apptLoc = advisingAppts[ai2][idx.apptCols.office];
                     if (!apptLoc) continue;
@@ -7948,8 +7977,8 @@ function exportStudentData() {
                     if (setHasNoLocationOffice(assignedOfficeNames)) { apptCountWithinOffice++; continue; } // v8.9 any-location
                     // Check normalized mappings
                     if (locStr === 'Veterans Services' && assignedOfficeNames.has('Veteran Services')) { apptCountWithinOffice++; continue; }
-                    if (locStr === 'Math, Engineering & Computer Science' || locStr === 'Math, Engineering and Computer Science') {
-                        if (assignedOfficeNames.has('Careers in Engineering') || assignedOfficeNames.has('CUNY 2X Tech Computer Science')) { apptCountWithinOffice++; continue; }
+                    if (isMecLocation(locStr)) {
+                        if (setHasMecOffice(assignedOfficeNames)) { apptCountWithinOffice++; continue; }
                     }
                     if (locStr === 'CUNY 2X Tech Academy' && assignedOfficeNames.has('CUNY 2X Tech Computer Science')) { apptCountWithinOffice++; continue; }
                 }
@@ -8094,7 +8123,7 @@ function exportForTableau() {
             if (!location) return [];
             var loc = String(location).trim();
             if (loc === 'Veterans Services') return ['Veteran Services'];
-            if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') return ['Careers in Engineering', 'CUNY 2X Tech Computer Science'];
+            if (isMecLocation(loc)) return MEC_LOCATION_OFFICES.slice();
             if (loc === 'CUNY 2X Tech Academy') return ['CUNY 2X Tech Computer Science'];
             return [loc];
         }
@@ -8517,8 +8546,8 @@ function exportUServicesForTableau() {
             if (isNoLocationOffice(office)) return true; // v8.9 any-location
             if (normalizeOfficeName(loc) === office) return true;
             if (loc === 'Veterans Services' && office === 'Veteran Services') return true;
-            if (loc === 'Math, Engineering & Computer Science' || loc === 'Math, Engineering and Computer Science') {
-                if (office === 'Careers in Engineering' || office === 'CUNY 2X Tech Computer Science') return true;
+            if (isMecLocation(loc)) {
+                if (MEC_LOCATION_OFFICES.indexOf(office) !== -1) return true;
             }
             return false;
         }
